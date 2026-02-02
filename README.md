@@ -125,27 +125,32 @@ To assess network health:
 
 ## Lab Topology
 
-The project includes a three-device SR Linux spine-leaf topology:
+The project includes a six-device SR Linux spine-leaf topology with 2 spine switches and 4 leaf switches:
 
 ```
-        [Spine1]
-        /      \
-       /        \
-   [Leaf1]----[Leaf2]
+        [Spine1]         [Spine2]
+        /  |  \  \       /  /  |  \
+       /   |   \  \     /  /   |   \
+   [Leaf1] [Leaf2] [Leaf3] [Leaf4]
 ```
 
 ### Device Details
-- **Spine1**: Core spine switch connecting both leaf switches (172.20.20.2)
-- **Leaf1**: Leaf switch with uplinks to spine and peer link to Leaf2 (172.20.20.3)
-- **Leaf2**: Leaf switch with uplinks to spine and peer link to Leaf1 (172.20.20.4)
+- **Spine1**: Core spine switch connecting all leaf switches (172.21.20.11)
+- **Spine2**: Core spine switch connecting all leaf switches (172.21.20.12)
+- **Leaf1**: Top-of-Rack switch with dual uplinks to both spines (172.21.20.13)
+- **Leaf2**: Top-of-Rack switch with dual uplinks to both spines (172.21.20.14)
+- **Leaf3**: Top-of-Rack switch with dual uplinks to both spines (172.21.20.15)
+- **Leaf4**: Top-of-Rack switch with dual uplinks to both spines (172.21.20.16)
 
 ### Connections
-- Spine1 e1-1 ↔ Leaf1 e1-1
-- Spine1 e1-2 ↔ Leaf2 e1-1
-- Leaf1 e1-2 ↔ Leaf2 e1-2
+Each leaf switch is dual-homed to both spine switches for redundancy:
+- Spine1 e1-1 ↔ Leaf1 e1-1, Spine2 e1-1 ↔ Leaf1 e1-2
+- Spine1 e1-2 ↔ Leaf2 e1-1, Spine2 e1-2 ↔ Leaf2 e1-2
+- Spine1 e1-3 ↔ Leaf3 e1-1, Spine2 e1-3 ↔ Leaf3 e1-2
+- Spine1 e1-4 ↔ Leaf4 e1-1, Spine2 e1-4 ↔ Leaf4 e1-2
 
 ### IP Addressing
-Containerlab automatically assigns management IPs from the 172.20.20.0/24 subnet, used for SSH and SNMP access.
+Containerlab automatically assigns management IPs from the 172.21.20.0/24 subnet, used for SSH and SNMP access.
 
 ## Module Descriptions
 

@@ -1,0 +1,75 @@
+name: srlinux-spine-leaf
+
+mgmt:
+  network: srlinux-mgmt
+  ipv4-subnet: 172.21.20.0/24
+
+topology:
+  kinds:
+    nokia_srlinux:
+      image: ghcr.io/nokia/srlinux:latest
+      type: ixr-d3l
+
+  nodes:
+    # Spine Switches
+    spine1:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.21.20.11
+      startup-config: ../configs/spine1.cfg
+      labels:
+        role: spine
+        tier: core
+
+    spine2:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.21.20.12
+      startup-config: ../configs/spine2.cfg
+      labels:
+        role: spine
+        tier: core
+
+    # Leaf Switches
+    leaf1:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.21.20.13
+      startup-config: ../configs/leaf1.cfg
+      labels:
+        role: leaf
+        tier: access
+
+    leaf2:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.21.20.14
+      startup-config: ../configs/leaf2.cfg
+      labels:
+        role: leaf
+        tier: access
+
+    leaf3:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.21.20.15
+      startup-config: ../configs/leaf3.cfg
+      labels:
+        role: leaf
+        tier: access
+
+    leaf4:
+      kind: nokia_srlinux
+      mgmt-ipv4: 172.21.20.16
+      startup-config: ../configs/leaf4.cfg
+      labels:
+        role: leaf
+        tier: access
+
+  links:
+    # Spine1 to Leaf connections
+    - endpoints: ["spine1:e1-1", "leaf1:e1-1"]
+    - endpoints: ["spine1:e1-2", "leaf2:e1-1"]
+    - endpoints: ["spine1:e1-3", "leaf3:e1-1"]
+    - endpoints: ["spine1:e1-4", "leaf4:e1-1"]
+
+    # Spine2 to Leaf connections
+    - endpoints: ["spine2:e1-1", "leaf1:e1-2"]
+    - endpoints: ["spine2:e1-2", "leaf2:e1-2"]
+    - endpoints: ["spine2:e1-3", "leaf3:e1-2"]
+    - endpoints: ["spine2:e1-4", "leaf4:e1-2"]
