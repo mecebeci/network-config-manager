@@ -1,0 +1,79 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.manifest
+*.spec
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+logs/
+*.log
+
+# Environment Variables
+.env
+
+# Configuration Backups
+configs/backups/*.cfg
+configs/backups/*.txt
+configs/backups/*.conf
+
+# Reports
+reports/*.png
+reports/*.json
+reports/*.html
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Containerlab
+.tls/
+*.topology
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Coverage Reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Unit Test / Pytest
+.pytest_cache/
+.tox/
