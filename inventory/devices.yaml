@@ -1,0 +1,83 @@
+# Network Device Inventory
+# This is the single source of truth for all network devices in the lab
+
+settings:
+  # Global connection settings
+  default_username: "admin"  # Can be overridden by NETWORK_USERNAME environment variable
+  default_password: "NokiaSrl1!"  # Can be overridden by NETWORK_PASSWORD environment variable
+  default_device_type: "nokia_sros"  # Default device type for Netmiko (SR Linux compatibility)
+  connection_timeout: 10  # Connection timeout in seconds
+
+  # SNMP settings
+  snmp_community: "public"
+  snmp_port: 161
+  snmp_version: 2  # SNMP version (1, 2, or 3)
+
+devices:
+  # Spine Layer - Core switches providing high-bandwidth interconnects
+  - name: spine1
+    ip: 172.21.20.11
+    role: spine
+    location: lab
+    device_type: nokia_sros
+    snmp_enabled: true
+    description: "Spine switch 1 - Core layer"
+    vendor: Nokia
+    model: "SR Linux IXR-D3L"
+    tier: core
+
+  - name: spine2
+    ip: 172.21.20.12
+    role: spine
+    location: lab
+    device_type: nokia_sros
+    snmp_enabled: true
+    description: "Spine switch 2 - Core layer"
+    vendor: Nokia
+    model: "SR Linux IXR-D3L"
+    tier: core
+
+  # Leaf Layer - Access switches connecting to endpoints
+  - name: leaf1
+    ip: 172.21.20.13
+    role: leaf
+    location: lab
+    device_type: nokia_sros
+    snmp_enabled: true
+    description: "Leaf switch 1 - Access layer"
+    vendor: Nokia
+    model: "SR Linux IXR-D3L"
+    tier: access
+
+  - name: leaf2
+    ip: 172.21.20.14
+    role: leaf
+    location: lab
+    device_type: nokia_sros
+    snmp_enabled: true
+    description: "Leaf switch 2 - Access layer"
+    vendor: Nokia
+    model: "SR Linux IXR-D3L"
+    tier: access
+
+  - name: leaf3
+    ip: 172.21.20.15
+    role: leaf
+    location: lab
+    device_type: nokia_sros
+    snmp_enabled: true
+    description: "Leaf switch 3 - Access layer"
+    vendor: Nokia
+    model: "SR Linux IXR-D3L"
+    tier: access
+
+  - name: leaf4
+    ip: 172.21.20.16
+    role: leaf
+    location: lab
+    device_type: nokia_sros
+    snmp_enabled: true
+    description: "Leaf switch 4 - Access layer"
+    vendor: Nokia
+    model: "SR Linux IXR-D3L"
+    tier: access
