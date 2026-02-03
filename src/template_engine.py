@@ -19,7 +19,7 @@ except ImportError:
     print("Error: jinja2 module not found. Install it with: pip install jinja2")
     sys.exit(1)
 
-from utils import get_logger, ensure_directory, safe_write_file, get_human_timestamp
+from .utils import get_logger, ensure_directory, safe_write_file, get_human_timestamp
 
 
 # ============================================================================
