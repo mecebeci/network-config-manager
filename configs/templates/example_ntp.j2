@@ -1,0 +1,9 @@
+! NTP Configuration for {{ hostname }}
+! Generated: {{ timestamp }}
+
+/system ntp
+    admin-state enable
+    server {{ ntp_server }} {
+        admin-state enable
+        prefer true
+    }

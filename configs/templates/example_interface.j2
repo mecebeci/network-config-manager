@@ -1,0 +1,13 @@
+! Interface Configuration for {{ hostname }}
+
+/interface {{ interface_name }}
+    admin-state enable
+    description "{{ description | default('Configured by automation') }}"
+    subinterface {{ subinterface_id | default(0) }} {
+        admin-state enable
+        {% if ip_address %}
+        ipv4 {
+            address {{ ip_address }}/{{ netmask | default(24) }}
+        }
+        {% endif %}
+    }

@@ -1,0 +1,10 @@
+! SNMP Configuration for {{ hostname }}
+
+/system snmp
+    admin-state enable
+    network-instance mgmt {
+        admin-state enable
+    }
+    community {{ snmp_community }} {
+        authorization ro
+    }
