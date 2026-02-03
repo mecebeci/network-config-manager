@@ -329,9 +329,4 @@ python3 backup_devices.py --help
 - Ensure backup directory is writable
 - Check log directory permissions
 
-## Support
-
-For issues or questions, check:
-- Project README.md
-- Log file: `logs/network_automation.log`
-- Verbose output: `--verbose` flag
+---
