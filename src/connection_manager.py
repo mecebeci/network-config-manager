@@ -8,7 +8,7 @@ from netmiko.exceptions import (
     SSHException,
 )
 
-from exceptions import (
+from .exceptions import (
     ConnectionError,
     AuthenticationError,
     TimeoutError,
