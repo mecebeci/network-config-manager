@@ -1,0 +1,14 @@
+! Configuration for {{ hostname }}
+! Role: {{ role }}
+! Generated: {{ timestamp }}
+
+/configure
+    system
+        name "{{ hostname }}"
+        location "{{ location }}"
+    exit
+
+    ntp
+        server {{ ntp_server }} prefer
+    exit
+exit

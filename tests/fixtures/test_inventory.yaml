@@ -1,0 +1,24 @@
+settings:
+  default_username: "admin"
+  default_password: "password"
+  default_device_type: "nokia_sros"
+  connection_timeout: 10
+
+devices:
+  - name: test_device1
+    ip: 192.168.1.1
+    role: spine
+    device_type: nokia_sros
+    location: lab
+
+  - name: test_device2
+    ip: 192.168.1.2
+    role: leaf
+    device_type: nokia_sros
+    location: lab
+
+  - name: test_device3
+    ip: 192.168.1.3
+    role: leaf
+    device_type: nokia_sros
+    location: lab
