@@ -10,7 +10,6 @@ This inventory system serves as the **single source of truth** for all network d
 - Global settings for default connection parameters
 - Consistent device metadata across all automation tools
 - Easy filtering by role, location, or custom attributes
-- SNMP configuration management
 - Extensible structure for adding new device properties
 
 ## File Structure
@@ -29,13 +28,10 @@ Global configuration parameters that apply to all devices unless overridden at t
 | `default_password` | string | Default SSH/API password | `NokiaSrl1!` |
 | `default_device_type` | string | Netmiko device type identifier | `nokia_sros` |
 | `connection_timeout` | integer | Connection timeout in seconds | `10` |
-| `snmp_community` | string | SNMP community string | `public` |
-| `snmp_port` | integer | SNMP port number | `161` |
-| `snmp_version` | integer | SNMP protocol version (1, 2, or 3) | `2` |
 
 **Environment Variable Override:**
-- `NETWORK_USERNAME` - Overrides `default_username`
-- `NETWORK_PASSWORD` - Overrides `default_password`
+- `DEVICE_USERNAME` - Overrides `default_username`
+- `DEVICE_PASSWORD` - Overrides `default_password`
 
 #### 2. Devices Section
 
@@ -48,7 +44,6 @@ A list of all network devices with their specific properties.
 | `role` | Yes | string | Device role (spine, leaf, border, etc.) |
 | `location` | Yes | string | Physical or logical location |
 | `device_type` | Yes | string | Device type for connection libraries |
-| `snmp_enabled` | Yes | boolean | Whether SNMP is enabled on device |
 | `description` | No | string | Human-readable device description |
 | `vendor` | No | string | Device manufacturer |
 | `model` | No | string | Device model number |
@@ -65,7 +60,6 @@ devices:
     role: access
     location: datacenter-1
     device_type: cisco_ios
-    snmp_enabled: true
 ```
 
 ### Full Device Entry
@@ -73,28 +67,31 @@ devices:
 ```yaml
 devices:
   - name: spine1
-    ip: 172.21.20.11
+    ip: 172.20.20.11
     role: spine
     location: lab
     device_type: nokia_sros
-    snmp_enabled: true
     description: "Spine switch 1 - Core layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"
     tier: core
 ```
 
-### Device with SNMP Disabled
+### Device with Custom Attributes
 
 ```yaml
 devices:
-  - name: legacy-switch
-    ip: 10.0.0.50
+  - name: leaf1
+    ip: 172.20.20.13
     role: leaf
-    location: remote-site
-    device_type: cisco_ios
-    snmp_enabled: false
-    description: "Legacy switch without SNMP support"
+    location: lab
+    device_type: nokia_sros
+    description: "Leaf switch 1 - Access layer"
+    vendor: Nokia
+    model: "SR Linux IXR-D3L"
+    tier: access
+    rack: "A12"
+    pod: "1"
 ```
 
 ## How to Add New Devices
@@ -107,7 +104,6 @@ devices:
    - `role`
    - `location`
    - `device_type`
-   - `snmp_enabled`
 4. Save the file
 5. Validate the inventory using the `InventoryLoader` class:
 
@@ -162,14 +158,15 @@ print(f"Default username: {settings['default_username']}")
 # Filter by location
 lab_devices = [d for d in loader.get_all_devices() if d['location'] == 'lab']
 
-# Filter by SNMP enabled
-snmp_devices = [d for d in loader.get_all_devices() if d.get('snmp_enabled', False)]
-
 # Filter by vendor
 nokia_devices = [d for d in loader.get_all_devices() if d.get('vendor') == 'Nokia']
 
 # Filter by tier
 core_devices = [d for d in loader.get_all_devices() if d.get('tier') == 'core']
+
+# Filter by role and location
+lab_spines = [d for d in loader.get_all_devices()
+              if d['role'] == 'spine' and d['location'] == 'lab']
 ```
 
 ## Best Practices
@@ -241,10 +238,10 @@ See [Netmiko documentation](https://github.com/ktbyers/netmiko#supported-platfor
 The inventory system integrates with:
 
 - **Connection Managers** - Provides device credentials and types
-- **SNMP Collectors** - Supplies SNMP-enabled devices and community strings
-- **Configuration Management** - Identifies devices for bulk configuration
-- **Monitoring Tools** - Defines devices to monitor
-- **Reporting Scripts** - Sources device metadata for reports
+- **Configuration Management** - Identifies devices for bulk configuration operations
+- **Backup Systems** - Defines devices for automated backup
+- **Deployment Tools** - Sources device information for configuration deployment
+- **Rollback Operations** - Provides device metadata for configuration restoration
 
 ## Troubleshooting
 
@@ -278,9 +275,6 @@ settings:
   default_password: string
   default_device_type: string
   connection_timeout: integer
-  snmp_community: string
-  snmp_port: integer
-  snmp_version: integer
 
 devices:
   - name: string (required, unique)
@@ -288,7 +282,6 @@ devices:
     role: string (required)
     location: string (required)
     device_type: string (required)
-    snmp_enabled: boolean (required)
     description: string (optional)
     vendor: string (optional)
     model: string (optional)
@@ -302,8 +295,10 @@ Planned features for the inventory system:
 
 - Support for device groups/tags
 - IPv6 address support
-- SNMPv3 authentication parameters
 - API endpoint configuration
 - Custom port configuration per device
 - Device dependency mapping
 - Automated discovery and inventory updates
+- Integration with external CMDBs
+
+---

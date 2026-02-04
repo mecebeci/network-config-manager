@@ -3,15 +3,10 @@
 
 settings:
   # Global connection settings
-  default_username: "admin"  # Can be overridden by NETWORK_USERNAME environment variable
-  default_password: "NokiaSrl1!"  # Can be overridden by NETWORK_PASSWORD environment variable
+  default_username: "${DEVICE_USERNAME}"
+  default_password: "${DEVICE_PASSWORD}"
   default_device_type: "nokia_sros"  # Default device type for Netmiko (SR Linux compatibility)
   connection_timeout: 10  # Connection timeout in seconds
-
-  # SNMP settings
-  snmp_community: "public"
-  snmp_port: 161
-  snmp_version: 2  # SNMP version (1, 2, or 3)
 
 devices:
   # Spine Layer - Core switches providing high-bandwidth interconnects
@@ -20,7 +15,6 @@ devices:
     role: spine
     location: lab
     device_type: nokia_sros
-    snmp_enabled: true
     description: "Spine switch 1 - Core layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"
@@ -31,7 +25,6 @@ devices:
     role: spine
     location: lab
     device_type: nokia_sros
-    snmp_enabled: true
     description: "Spine switch 2 - Core layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"
@@ -43,7 +36,6 @@ devices:
     role: leaf
     location: lab
     device_type: nokia_sros
-    snmp_enabled: true
     description: "Leaf switch 1 - Access layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"
@@ -54,7 +46,6 @@ devices:
     role: leaf
     location: lab
     device_type: nokia_sros
-    snmp_enabled: true
     description: "Leaf switch 2 - Access layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"
@@ -65,7 +56,6 @@ devices:
     role: leaf
     location: lab
     device_type: nokia_sros
-    snmp_enabled: true
     description: "Leaf switch 3 - Access layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"
@@ -76,7 +66,6 @@ devices:
     role: leaf
     location: lab
     device_type: nokia_sros
-    snmp_enabled: true
     description: "Leaf switch 4 - Access layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"

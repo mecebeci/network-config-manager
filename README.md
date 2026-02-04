@@ -1,49 +1,51 @@
-# Network Automation and SNMP Monitoring System
+# Network Configuration Management System
 
-A comprehensive Python-based solution for automating multi-device network configuration management and monitoring SR Linux devices. This system eliminates repetitive manual tasks by providing automated backup, deployment, rollback capabilities, and real-time SNMP monitoring through Containerlab virtualization.
+A comprehensive Python-based solution for automating multi-device network configuration management for SR Linux devices. This system eliminates repetitive manual tasks by providing automated backup, template-based deployment, and rollback capabilities through Containerlab virtualization.
 
 ## Project Overview
 
-**Project Name:** Multi-Device Network Automation and SNMP Monitoring System
+**Project Name:** Network Configuration Management System
 
-**Purpose:** This project automates repetitive network management tasks, enabling network engineers to manage multiple devices simultaneously instead of manually logging into each device individually. It provides centralized configuration management, automated backups, and comprehensive health monitoring for SR Linux network infrastructure.
+**Purpose:** This project automates repetitive network configuration tasks, enabling network engineers to manage multiple devices simultaneously instead of manually logging into each device individually. It provides centralized configuration management with automated backups, template-based deployment, and safe rollback capabilities for SR Linux network infrastructure.
 
 **Real-World Problem It Solves:**
 
 Imagine managing 50 network devices where you need to change the NTP server configuration across all of them. Traditionally, this would require SSH access to each device individually, executing commands 50 times, and manually tracking changes. This project allows you to define the configuration once and deploy it automatically to all devices, with built-in safety mechanisms including automated backups and dry-run validation.
 
-## Key Features
+## Core Features
 
-### Configuration Management
-- **Automated Backup**: Schedule and execute automatic configuration backups with timestamp-based version control
-- **Template-Based Deployment**: Deploy standardized configurations using Jinja2 templates with device-specific variable substitution
-- **Configuration Rollback**: Quick restoration to previous working configurations with interactive backup selection
-- **Dry-Run Mode**: Preview configuration changes before applying them to production devices
+### 1. Configuration Backup
+- **Automated backup with timestamps** - Schedule and execute automatic configuration backups with timestamp-based version control
+- **Single and multi-device backup** - Backup individual devices or entire network segments
+- **Parallel execution support** - Run backups concurrently for faster operations
+- **Backup retention and rotation** - Maintain historical configurations for audit and recovery
 
-### Network Monitoring
-- **SNMP Monitoring**: Real-time collection of device metrics including uptime, interface traffic, and operational status
-- **Visual Reporting**: Automated generation of traffic charts, uptime visualizations, and interface status reports
-- **JSON Export**: Export collected metrics for integration with external monitoring systems
-- **Multi-Device Health Checks**: Simultaneous monitoring across entire network infrastructure
+### 2. Configuration Deployment
+- **Jinja2 template-based deployment** - Deploy standardized configurations using templates with device-specific variables
+- **Dry-run mode for testing** - Preview configuration changes before applying them to production
+- **Automatic pre-deployment backup** - Safety backup created before every deployment
+- **Rollback on failure** - Automatic restoration if deployment fails
+- **Variable substitution** - Dynamic configuration generation based on device attributes
 
-### Safety and Reliability
-- **Pre-Deployment Backups**: Automatic backup creation before any configuration changes
-- **Error Handling**: Graceful handling of connection failures, authentication errors, and timeouts
-- **Results Tracking**: Comprehensive success/failure reporting for all operations
-- **Device Filtering**: Target specific devices or roles (spine/leaf) for selective operations
+### 3. Configuration Rollback
+- **Restore from any previous backup** - Access complete configuration history
+- **Interactive backup selection** - Choose from chronologically sorted backup list
+- **Safety backup before rollback** - Current configuration saved before restoration
+- **Timestamp-based rollback** - Easy identification of restore points
+
+### 4. Multi-Device Operations
+- **Parallel execution for speed** - Concurrent operations across multiple devices
+- **Device filtering by name or role** - Target specific devices or groups (spine/leaf)
+- **Comprehensive error handling** - Graceful handling of failures with detailed reporting
 
 ## Technology Stack
 
-- **Python 3.8+**: Core programming language
-- **Netmiko 4.3.0+**: Multi-vendor SSH library for network device automation
-- **PySNMP 4.4.12+**: SNMP protocol implementation for network monitoring
-- **Matplotlib 3.8.0+**: Data visualization and chart generation
-- **Containerlab**: Network topology virtualization platform
-- **SR Linux**: Nokia's network operating system for data center networking
-- **Jinja2 3.1.2+**: Configuration template engine
-- **PyYAML 6.0.1+**: YAML parser for inventory and configuration files
-- **python-dotenv 1.0.0+**: Environment variable management
-- **Tabulate 0.9.0+**: Formatted console output tables
+- **Python 3.x** - Core programming language
+- **Netmiko** - SSH automation for network devices
+- **Jinja2** - Configuration template engine
+- **PyYAML** - Inventory management
+- **Containerlab** - Lab environment virtualization
+- **Nokia SR Linux** - Network operating system
 
 ## Project Architecture
 
@@ -51,48 +53,50 @@ Imagine managing 50 network devices where you need to change the NTP server conf
 Command-line interface for executing operations with support for various options including device targeting, template selection, and dry-run validation.
 
 ### Layer 2 - Application Logic
-Python modules handling business logic including inventory management, connection handling, command execution, error management, and report generation.
+Python modules handling business logic including inventory management, connection handling, command execution, error management, and configuration operations.
 
 ### Layer 3 - Network Communication
-- **Netmiko**: SSH connection management and command execution
-- **PySNMP**: SNMP queries and metric collection
-- Abstraction of low-level protocol details
+**Netmiko** provides SSH connection management and command execution, abstracting low-level protocol details.
 
 ### Layer 4 - Network Devices
-SR Linux containers running in Containerlab, receiving SSH connections and SNMP queries, executing commands, and returning results.
+SR Linux containers running in Containerlab, receiving SSH connections, executing commands, and returning results.
 
 ## Project Structure
 
 ```
 network-automation-snmp/
 ├── README.md                 # Project documentation
-├── .gitignore               # Git ignore rules
 ├── requirements.txt         # Python dependencies
+├── .gitignore               # Git ignore rules
 ├── .env.example            # Environment variables template
-├── inventory/              # Device inventory files (YAML)
-│   └── devices.yaml        # Device definitions with credentials and SNMP settings
+├── backup_devices.py        # Backup CLI
+├── deploy_config.py         # Deployment CLI
+├── rollback_config.py       # Rollback CLI
+├── inventory/              # Device inventory
+│   ├── devices.yaml        # Device definitions
+│   └── README.md           # Inventory documentation
 ├── configs/                # Configuration management
-│   ├── backups/           # Timestamped device configuration backups
-│   └── templates/         # Jinja2 configuration templates
+│   ├── backups/           # Stored backups
+│   └── templates/         # Jinja2 templates
 ├── src/                    # Source code modules
-│   ├── backup.py          # Configuration backup module
-│   ├── deploy.py          # Configuration deployment module
-│   ├── rollback.py        # Configuration rollback module
-│   ├── monitor.py         # SNMP monitoring module
-│   └── utils.py           # Shared utility functions
-├── reports/                # Generated monitoring reports and charts
-│   ├── traffic_*.png      # Traffic comparison charts
-│   ├── uptime_*.png       # Device uptime visualizations
-│   └── metrics_*.json     # Exported metric data
-├── lab/                    # Containerlab topology definitions
-│   └── topology.yml       # SR Linux spine-leaf topology
-└── logs/                   # Application logs and operation history
+│   ├── backup.py          # Backup module
+│   ├── deployment.py      # Deployment module
+│   ├── rollback.py        # Rollback module
+│   ├── connection_manager.py  # SSH connections
+│   ├── inventory_loader.py    # Inventory management
+│   ├── template_engine.py     # Template rendering
+│   ├── utils.py           # Utilities
+│   └── exceptions.py      # Custom exceptions
+├── lab/                    # Containerlab topology
+│   ├── topology.yaml      # Lab topology definition
+│   └── README.md          # Lab documentation
+└── logs/                   # Application logs
 ```
 
 ## Workflow Examples
 
 ### Workflow 1 - Daily Backup
-Schedule the backup script to run nightly at midnight. The script loads the inventory, connects to each device sequentially, retrieves running configurations, saves them with timestamps, and generates a summary report. Morning verification ensures fresh backups exist for all devices.
+Schedule the backup script to run nightly at midnight. The script loads the inventory, connects to each device, retrieves running configurations, saves them with timestamps, and generates a summary report. Morning verification ensures fresh backups exist for all devices.
 
 ### Workflow 2 - Configuration Change
 To add a new NTP server across all devices:
@@ -112,17 +116,6 @@ When a configuration change causes issues:
 5. Script restores the selected configuration
 6. Verify device functionality
 
-### Workflow 4 - Health Check
-To assess network health:
-1. Run SNMP monitoring script
-2. Script queries each device for uptime, traffic counters, and interface states
-3. Console displays summary table with device uptimes and traffic totals
-4. PNG charts generated showing:
-   - Traffic comparison across devices (inbound/outbound)
-   - Uptime visualization with health color coding
-   - Interface status distribution (up/down)
-5. Optional JSON export for external processing
-
 ## Lab Topology
 
 The project includes a six-device SR Linux spine-leaf topology with 2 spine switches and 4 leaf switches:
@@ -135,12 +128,12 @@ The project includes a six-device SR Linux spine-leaf topology with 2 spine swit
 ```
 
 ### Device Details
-- **Spine1**: Core spine switch connecting all leaf switches (172.21.20.11)
-- **Spine2**: Core spine switch connecting all leaf switches (172.21.20.12)
-- **Leaf1**: Top-of-Rack switch with dual uplinks to both spines (172.21.20.13)
-- **Leaf2**: Top-of-Rack switch with dual uplinks to both spines (172.21.20.14)
-- **Leaf3**: Top-of-Rack switch with dual uplinks to both spines (172.21.20.15)
-- **Leaf4**: Top-of-Rack switch with dual uplinks to both spines (172.21.20.16)
+- **Spine1**: Core spine switch connecting all leaf switches (172.20.20.11)
+- **Spine2**: Core spine switch connecting all leaf switches (172.20.20.12)
+- **Leaf1**: Top-of-Rack switch with dual uplinks to both spines (172.20.20.13)
+- **Leaf2**: Top-of-Rack switch with dual uplinks to both spines (172.20.20.14)
+- **Leaf3**: Top-of-Rack switch with dual uplinks to both spines (172.20.20.15)
+- **Leaf4**: Top-of-Rack switch with dual uplinks to both spines (172.20.20.16)
 
 ### Connections
 Each leaf switch is dual-homed to both spine switches for redundancy:
@@ -150,7 +143,7 @@ Each leaf switch is dual-homed to both spine switches for redundancy:
 - Spine1 e1-4 ↔ Leaf4 e1-1, Spine2 e1-4 ↔ Leaf4 e1-2
 
 ### IP Addressing
-Containerlab automatically assigns management IPs from the 172.21.20.0/24 subnet, used for SSH and SNMP access.
+Containerlab automatically assigns management IPs from the 172.20.20.0/24 subnet, used for SSH access.
 
 ## Module Descriptions
 
@@ -163,36 +156,11 @@ Reads Jinja2 templates containing configuration commands, performs variable subs
 ### Rollback Module
 Lists all available backups for selected devices sorted by date (newest first), allows interactive selection of restore point, and applies the historical configuration to recover from problematic changes.
 
-### SNMP Monitoring Module
-Queries devices using SNMP protocol to collect:
-- System uptime (time since last reboot)
-- Interface traffic counters (inbound/outbound octets)
-- Interface operational status (up/down states)
+### Connection Manager
+Manages SSH connections to network devices using Netmiko, handles authentication, connection pooling, and error recovery for robust network communication.
 
-Generates visual charts with Matplotlib:
-- **Traffic Chart**: Bar chart comparing traffic across devices
-- **Uptime Chart**: Horizontal bar chart with color-coded health indicators
-- **Interface Status Chart**: Pie chart showing interface state distribution
-
-## Command Line Interface
-
-### Common Arguments
-- `--inventory, -i`: Path to inventory file (default: `inventory/devices.yaml`)
-- `--device, -d`: Target specific device by name
-- `--role, -r`: Filter devices by role (spine or leaf)
-
-### Backup-Specific Arguments
-- `--backup-dir, -b`: Directory for storing backup files
-
-### Deployment-Specific Arguments
-- `--template, -t`: Configuration template to deploy (required)
-- `--dry-run`: Preview changes without applying them
-- `--no-backup`: Skip automatic pre-deployment backup
-
-### Monitoring-Specific Arguments
-- `--output-dir, -o`: Directory for saving charts
-- `--no-charts`: Skip chart generation
-- `--export-json`: Save metrics to JSON file
+### Template Engine
+Processes Jinja2 templates with device-specific variables to generate dynamic configurations, supporting conditional logic and loops for complex configuration scenarios.
 
 ## Installation
 
@@ -236,45 +204,86 @@ cp .env.example .env
 6. Deploy lab topology (optional):
 ```bash
 cd lab
-sudo containerlab deploy -t topology.yml
+sudo containerlab deploy -t topology.yaml
 ```
 
-## Usage
+## Usage Examples
 
-### Backup All Devices
+### Backup Operations
+
 ```bash
-python src/backup.py
+# Backup all devices
+python backup_devices.py --all
+
+# Backup specific devices
+python backup_devices.py --device spine1 --device leaf1
+
+# Backup by role
+python backup_devices.py --role spine
+
+# Backup with parallel execution
+python backup_devices.py --all --parallel
 ```
 
-### Backup Specific Device
+### Deployment Operations
+
 ```bash
-python src/backup.py --device spine1
+# Preview deployment (dry-run)
+python deploy_config.py --device spine1 --template ntp_config.j2 \
+  --vars '{"ntp_server": "10.0.0.1"}' --dry-run
+
+# Deploy to all devices
+python deploy_config.py --all --template ntp_config.j2 \
+  --vars '{"ntp_server": "10.0.0.1"}'
+
+# Deploy to specific role
+python deploy_config.py --role spine --template snmp_config.j2 \
+  --vars @variables.json
+
+# Deploy without backup (not recommended)
+python deploy_config.py --device leaf1 --template base_config.j2 \
+  --no-backup
 ```
 
-### Deploy Configuration Template
+### Rollback Operations
+
 ```bash
-python src/deploy.py --template configs/templates/ntp.j2
+# List available backups for a device
+python rollback_config.py --list spine1
+
+# Rollback to latest backup
+python rollback_config.py --device spine1 --latest
+
+# Interactive rollback (choose from list)
+python rollback_config.py --device spine1
+
+# Rollback with dry-run
+python rollback_config.py --device spine1 --latest --dry-run
 ```
 
-### Deploy with Dry-Run
-```bash
-python src/deploy.py --template configs/templates/ntp.j2 --dry-run
-```
+## Command Line Interface
 
-### Rollback Configuration
-```bash
-python src/rollback.py --device leaf1
-```
+### Common Arguments
+- `--inventory, -i`: Path to inventory file (default: `inventory/devices.yaml`)
+- `--device, -d`: Target specific device by name (can be used multiple times)
+- `--role, -r`: Filter devices by role (spine or leaf)
+- `--all, -a`: Target all devices in inventory
+- `--parallel, -p`: Execute operations in parallel
 
-### Monitor Network Health
-```bash
-python src/monitor.py
-```
+### Backup-Specific Arguments
+- `--backup-dir, -b`: Directory for storing backup files (default: `configs/backups`)
 
-### Monitor Specific Role
-```bash
-python src/monitor.py --role spine
-```
+### Deployment-Specific Arguments
+- `--template, -t`: Configuration template to deploy (required)
+- `--vars, -v`: Template variables as JSON string or @file.json
+- `--dry-run`: Preview changes without applying them
+- `--no-backup`: Skip automatic pre-deployment backup
+
+### Rollback-Specific Arguments
+- `--list, -l`: List available backups for specified device
+- `--latest`: Rollback to the most recent backup
+- `--backup-file, -f`: Specify exact backup file to restore
+- `--dry-run`: Preview rollback without applying changes
 
 ## Error Handling
 
@@ -283,30 +292,82 @@ The system implements comprehensive error handling:
 - **Connection Failures**: Logs errors, marks devices as failed, continues with remaining devices
 - **Authentication Failures**: Catches authentication exceptions, logs issues, proceeds to next device
 - **Timeout Handling**: Gracefully handles device response timeouts without crashing
+- **Template Errors**: Validates templates and variables before deployment
 - **Results Tracking**: Maintains separate lists of successful and failed operations with detailed error messages
 
 All operations provide final summaries showing both successful completions and failures with specific error details.
+
+## Safety Features
+
+### Pre-Deployment Backups
+Every deployment automatically creates a backup of the current configuration before applying changes, ensuring you can always revert if needed.
+
+### Dry-Run Mode
+Test configuration changes without actually applying them to devices. Review the exact commands that would be executed.
+
+### Rollback Safety Backup
+Before performing a rollback, the system creates a safety backup of the current configuration, preventing data loss.
+
+### Parallel Execution Safety
+Even with parallel execution, the system maintains proper error isolation and ensures failures on one device don't affect operations on others.
+
+## Quick Start Guide
+
+1. **Setup your lab environment**:
+```bash
+cd lab
+sudo containerlab deploy -t topology.yaml
+```
+
+2. **Configure your inventory**:
+Edit `inventory/devices.yaml` with your device details.
+
+3. **Take an initial backup**:
+```bash
+python backup_devices.py --all
+```
+
+4. **Create a configuration template**:
+Create a Jinja2 template in `configs/templates/`.
+
+5. **Test your deployment**:
+```bash
+python deploy_config.py --device spine1 --template your_template.j2 --dry-run
+```
+
+6. **Deploy the configuration**:
+```bash
+python deploy_config.py --all --template your_template.j2
+```
+
+7. **Rollback if needed**:
+```bash
+python rollback_config.py --device spine1 --latest
+```
 
 ## Why This Project Matters
 
 This project demonstrates practical skills directly applicable to network engineering and automation roles:
 
 - **Network Automation Skills**: Python-based automation, Netmiko usage, configuration management
-- **SNMP Knowledge**: Understanding of SNMP protocol, OIDs, and metric collection
+- **Infrastructure as Code**: Template-based configuration management with version control
 - **Practical Experience**: Working code demonstrating real-world problem-solving
 - **Documentation Skills**: Professional documentation and code organization
 - **Lab Environment**: Containerlab proficiency for safe pre-production testing
 - **Design Decisions**: Thoughtful architecture with separation of concerns and maintainability
+- **Safety-First Approach**: Built-in safeguards for production environment operations
 
 ## Future Enhancements
 
-- Support for additional network device vendors and platforms
-- Web-based dashboard for monitoring and configuration management
+- Support for additional network device vendors and platforms (Cisco, Arista, Juniper)
+- Web-based dashboard for configuration management
 - Scheduled backup automation with retention policies
 - Configuration compliance checking and drift detection
-- Integration with external monitoring systems (Grafana, Prometheus)
+- Configuration versioning with Git integration
 - REST API for programmatic access
 - Ansible playbook integration
-- Multi-threading for improved performance with large device inventories
+- Advanced template library with common configurations
+- Multi-site configuration synchronization
+- Configuration change approval workflows
 
 ---

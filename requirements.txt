@@ -2,21 +2,14 @@
 # SSH library for multi-vendor network device automation
 netmiko>=4.3.0
 
-# Monitoring
-# SNMP library for network device monitoring and metric collection
-pysnmp>=4.4.12
-
-# Visualization
-# Plotting library for generating charts and graphs
-matplotlib>=3.8.0
-
-# Utilities
+# Configuration Management
 # YAML parser for reading configuration and inventory files
 pyyaml>=6.0.1
 
 # Template engine for configuration file generation
 jinja2>=3.1.2
 
+# Utilities
 # Environment variable management from .env files
 python-dotenv>=1.0.0
 
