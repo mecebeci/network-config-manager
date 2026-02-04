@@ -64,32 +64,39 @@ SR Linux containers running in Containerlab, receiving SSH connections, executin
 ## Project Structure
 
 ```
-network-automation-snmp/
+network-config-manager/
 ├── README.md                 # Project documentation
 ├── requirements.txt         # Python dependencies
 ├── .gitignore               # Git ignore rules
 ├── .env.example            # Environment variables template
-├── backup_devices.py        # Backup CLI
-├── deploy_config.py         # Deployment CLI
-├── rollback_config.py       # Rollback CLI
+├── netconfig.py             # Unified CLI (main entry point)
+├── legacy/                 # Legacy CLI scripts (deprecated)
+│   ├── README.md           # Legacy scripts documentation
+│   ├── backup_devices.py   # Standalone backup CLI
+│   ├── deploy_config.py    # Standalone deployment CLI
+│   └── rollback_config.py  # Standalone rollback CLI
+├── tests/                  # Test files
+│   └── test_netconfig.py   # CLI structure validation test
+├── docs/                   # Documentation
+│   └── NETCONFIG_USAGE.md  # Unified CLI documentation
+├── src/                    # Source code modules
+│   ├── backup.py           # Backup module
+│   ├── deployment.py       # Deployment module
+│   ├── rollback.py         # Rollback module
+│   ├── connection_manager.py  # SSH connections
+│   ├── inventory_loader.py    # Inventory management
+│   ├── template_engine.py     # Template rendering
+│   ├── utils.py            # Utilities
+│   └── exceptions.py       # Custom exceptions
 ├── inventory/              # Device inventory
 │   ├── devices.yaml        # Device definitions
 │   └── README.md           # Inventory documentation
 ├── configs/                # Configuration management
-│   ├── backups/           # Stored backups
-│   └── templates/         # Jinja2 templates
-├── src/                    # Source code modules
-│   ├── backup.py          # Backup module
-│   ├── deployment.py      # Deployment module
-│   ├── rollback.py        # Rollback module
-│   ├── connection_manager.py  # SSH connections
-│   ├── inventory_loader.py    # Inventory management
-│   ├── template_engine.py     # Template rendering
-│   ├── utils.py           # Utilities
-│   └── exceptions.py      # Custom exceptions
+│   ├── backups/            # Stored backups
+│   └── templates/          # Jinja2 templates
 ├── lab/                    # Containerlab topology
-│   ├── topology.yaml      # Lab topology definition
-│   └── README.md          # Lab documentation
+│   ├── topology.yaml       # Lab topology definition
+│   └── README.md           # Lab documentation
 └── logs/                   # Application logs
 ```
 
@@ -207,59 +214,60 @@ cd lab
 sudo containerlab deploy -t topology.yaml
 ```
 
+## Unified CLI (Recommended)
+
+The project includes a unified CLI tool (`netconfig.py`) that combines all operations into a single command interface:
+
+```bash
+# Quick examples
+python3 netconfig.py backup --all
+python3 netconfig.py deploy -t ntp.j2 --all --vars '{"server": "10.0.0.1"}'
+python3 netconfig.py rollback --device spine1 --latest
+python3 netconfig.py list --devices
+python3 netconfig.py validate --inventory
+```
+
+**📖 Complete documentation:** See [docs/NETCONFIG_USAGE.md](docs/NETCONFIG_USAGE.md) for comprehensive usage guide.
+
 ## Usage Examples
 
-### Backup Operations
+### Using Unified CLI (Recommended)
 
 ```bash
 # Backup all devices
-python backup_devices.py --all
+python3 netconfig.py backup --all
 
-# Backup specific devices
-python backup_devices.py --device spine1 --device leaf1
-
-# Backup by role
-python backup_devices.py --role spine
-
-# Backup with parallel execution
-python backup_devices.py --all --parallel
-```
-
-### Deployment Operations
-
-```bash
-# Preview deployment (dry-run)
-python deploy_config.py --device spine1 --template ntp_config.j2 \
-  --vars '{"ntp_server": "10.0.0.1"}' --dry-run
-
-# Deploy to all devices
-python deploy_config.py --all --template ntp_config.j2 \
-  --vars '{"ntp_server": "10.0.0.1"}'
-
-# Deploy to specific role
-python deploy_config.py --role spine --template snmp_config.j2 \
-  --vars @variables.json
-
-# Deploy without backup (not recommended)
-python deploy_config.py --device leaf1 --template base_config.j2 \
-  --no-backup
-```
-
-### Rollback Operations
-
-```bash
-# List available backups for a device
-python rollback_config.py --list spine1
+# Deploy configuration
+python3 netconfig.py deploy -t ntp.j2 --all --vars '{"server": "10.0.0.1"}'
 
 # Rollback to latest backup
-python rollback_config.py --device spine1 --latest
+python3 netconfig.py rollback --device spine1 --latest
 
-# Interactive rollback (choose from list)
-python rollback_config.py --device spine1
+# List resources
+python3 netconfig.py list --devices
+python3 netconfig.py list --templates
+python3 netconfig.py list --backups spine1
 
-# Rollback with dry-run
-python rollback_config.py --device spine1 --latest --dry-run
+# Validate
+python3 netconfig.py validate --inventory
+python3 netconfig.py validate --templates
 ```
+
+### Using Individual Scripts (Legacy)
+
+**Note**: The original individual CLI scripts have been moved to the `legacy/` directory and are deprecated. They still work but are no longer actively maintained.
+
+For legacy script documentation, see [legacy/README.md](legacy/README.md).
+
+Quick example:
+```bash
+# Legacy scripts can still be used from the legacy/ directory
+python3 legacy/backup_devices.py --all
+python3 legacy/deploy_config.py --all --template ntp.j2
+python3 legacy/rollback_config.py --device spine1 --latest
+```
+
+**Recommendation**: Use the unified CLI (`netconfig.py`) for all new workflows.
 
 ## Command Line Interface
 
@@ -324,7 +332,7 @@ Edit `inventory/devices.yaml` with your device details.
 
 3. **Take an initial backup**:
 ```bash
-python backup_devices.py --all
+python3 netconfig.py backup --all
 ```
 
 4. **Create a configuration template**:
@@ -332,17 +340,17 @@ Create a Jinja2 template in `configs/templates/`.
 
 5. **Test your deployment**:
 ```bash
-python deploy_config.py --device spine1 --template your_template.j2 --dry-run
+python3 netconfig.py deploy -t your_template.j2 --device spine1 --dry-run
 ```
 
 6. **Deploy the configuration**:
 ```bash
-python deploy_config.py --all --template your_template.j2
+python3 netconfig.py deploy -t your_template.j2 --all --vars @vars.json
 ```
 
 7. **Rollback if needed**:
 ```bash
-python rollback_config.py --device spine1 --latest
+python3 netconfig.py rollback --device spine1 --latest
 ```
 
 ## Why This Project Matters
