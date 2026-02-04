@@ -61,6 +61,8 @@ Thumbs.db
 # Containerlab
 .tls/
 *.topology
+clab-*/
+lab/clab-*/
 
 # Temporary Files
 *.tmp

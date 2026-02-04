@@ -47,6 +47,7 @@ A comprehensive Python-based solution for automating multi-device network config
 - **PyYAML** - Inventory management (YAML)
 - **Containerlab** - Lab environment virtualization
 - **Nokia SR Linux** - Network operating system
+- **Pytest** - Testing framework with coverage reporting
 
 ## Quick Start
 
@@ -63,6 +64,9 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Verify installation (run tests)
+pytest
 
 # Configure credentials (optional)
 cp .env.example .env
@@ -92,6 +96,10 @@ python3 netconfig.py backup --all
 
 # List templates
 python3 netconfig.py list --templates
+
+# View baseline configurations
+cat configs/spine1.cfg
+cat configs/leaf1.cfg
 ```
 
 ## Unified CLI Usage
@@ -189,7 +197,7 @@ python3 netconfig.py --config custom/devices.yaml list --devices
 python3 netconfig.py --version
 ```
 
-**📖 Complete documentation:** See [docs/NETCONFIG_USAGE.md](docs/NETCONFIG_USAGE.md)
+**Complete documentation:** See [docs/NETCONFIG_USAGE.md](docs/NETCONFIG_USAGE.md)
 
 ## Project Structure
 
@@ -217,13 +225,28 @@ network-config-manager/
 │
 ├── configs/                # Configuration management
 │   ├── backups/            # Stored backups (timestamped)
-│   └── templates/          # Jinja2 templates (.j2 files)
+│   ├── templates/          # Jinja2 templates (.j2 files)
+│   ├── spine1.cfg          # Baseline config for spine1
+│   ├── spine2.cfg          # Baseline config for spine2
+│   ├── leaf1.cfg           # Baseline config for leaf1
+│   ├── leaf2.cfg           # Baseline config for leaf2
+│   ├── leaf3.cfg           # Baseline config for leaf3
+│   └── leaf4.cfg           # Baseline config for leaf4
 │
 ├── docs/                   # Documentation
 │   └── NETCONFIG_USAGE.md  # Complete CLI usage guide
 │
-├── tests/                  # Test files
-│   └── test_netconfig.py   # CLI structure validation
+├── tests/                  # Test suite
+│   ├── conftest.py         # Pytest configuration and fixtures
+│   ├── test_backup.py      # Backup module tests
+│   ├── test_deployment.py  # Deployment module tests
+│   ├── test_rollback.py    # Rollback module tests
+│   ├── test_connection_manager.py  # Connection tests
+│   ├── test_inventory_loader.py    # Inventory tests
+│   ├── test_template_engine.py     # Template tests
+│   ├── test_utils.py       # Utility function tests
+│   └── integration/        # Integration tests
+│       └── test_full_workflow.py  # End-to-end workflow tests
 │
 ├── lab/                    # Containerlab topology
 │   ├── topology.yaml       # Lab topology definition
@@ -237,12 +260,7 @@ network-config-manager/
 
 Six-device SR Linux spine-leaf topology:
 
-```
-        [Spine1]         [Spine2]
-        /  |  \  \       /  /  |  \
-       /   |   \  \     /  /   |   \
-   [Leaf1] [Leaf2] [Leaf3] [Leaf4]
-```
+![SR Linux spine-leaf topology with 2 spine switches and 4 leaf switches in a dual-homed configuration](docs/lab_topology.png)
 
 ### Device Details
 
@@ -256,6 +274,25 @@ Six-device SR Linux spine-leaf topology:
 | leaf4  | leaf  | 172.20.20.16  | Top-of-Rack switch |
 
 Each leaf is dual-homed to both spines for redundancy.
+
+### Baseline Configurations
+
+The [configs/](configs/) directory includes baseline configuration files for all lab devices:
+
+- **Spine configurations** ([spine1.cfg](configs/spine1.cfg), [spine2.cfg](configs/spine2.cfg))
+  - 4 uplink interfaces (ethernet-1/1 to ethernet-1/4) connected to leaf switches
+  - Management interface with static IP (172.21.20.11-12/24)
+  - System information and interface descriptions
+
+- **Leaf configurations** ([leaf1.cfg](configs/leaf1.cfg), [leaf2.cfg](configs/leaf2.cfg), [leaf3.cfg](configs/leaf3.cfg), [leaf4.cfg](configs/leaf4.cfg))
+  - 2 uplink interfaces (ethernet-1/1 to ethernet-1/2) dual-homed to spines
+  - Management interface with static IP (172.21.20.13-16/24)
+  - System information and interface descriptions
+
+These files serve as:
+- **Reference configurations** - Example SR Linux configurations for the lab topology
+- **Deployment baseline** - Starting point for configuration management operations
+- **Rollback targets** - Known-good configurations for testing rollback functionality
 
 ## Workflow Examples
 
@@ -313,6 +350,122 @@ python3 netconfig.py deploy -t spine_config.j2 --role spine \
 
 # Rollback all leaf switches
 python3 netconfig.py rollback --role leaf --latest --parallel --yes
+```
+
+### Using Baseline Configurations
+
+```bash
+# 1. Review baseline configuration for a device
+cat configs/spine1.cfg
+
+# 2. Compare with current device configuration
+python3 netconfig.py backup --device spine1
+diff configs/spine1.cfg configs/backups/spine1_*.cfg
+
+# 3. Apply baseline configuration (using manual deployment)
+# Note: You can use baseline configs as templates or reference for creating
+# Jinja2 templates for automated deployment
+
+# 4. Test rollback to baseline configuration
+cp configs/spine1.cfg configs/backups/spine1_baseline.cfg
+python3 netconfig.py rollback --device spine1 --backup configs/backups/spine1_baseline.cfg --dry-run
+```
+
+## Testing
+
+The project includes a comprehensive test suite using pytest with unit and integration tests covering all core modules.
+
+### Test Organization
+
+```
+tests/
+├── conftest.py                # Shared pytest fixtures
+├── test_backup.py             # Backup functionality tests
+├── test_deployment.py         # Deployment functionality tests
+├── test_rollback.py           # Rollback functionality tests
+├── test_connection_manager.py # SSH connection tests
+├── test_inventory_loader.py   # Inventory parsing tests
+├── test_template_engine.py    # Jinja2 template tests
+├── test_utils.py              # Utility function tests
+└── integration/
+    └── test_full_workflow.py  # End-to-end workflow tests
+```
+
+### Running Tests
+
+```bash
+# Install test dependencies
+pip install -r requirements.txt
+
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/test_backup.py
+
+# Run specific test function
+pytest tests/test_backup.py::test_backup_device
+
+# Run tests by marker
+pytest -m unit          # Run only unit tests
+pytest -m integration   # Run only integration tests
+pytest -m "not slow"    # Skip slow tests
+```
+
+### Test Coverage
+
+```bash
+# Run tests with coverage report
+pytest --cov=src --cov-report=html --cov-report=term
+
+# View HTML coverage report
+open htmlcov/index.html
+```
+
+### Test Markers
+
+The test suite uses pytest markers for test organization:
+
+- `@pytest.mark.unit` - Unit tests (fast, isolated)
+- `@pytest.mark.integration` - Integration tests (require components)
+- `@pytest.mark.slow` - Tests that take longer to execute
+- `@pytest.mark.requires_lab` - Tests requiring Containerlab environment
+
+### Test Fixtures
+
+Shared fixtures in [conftest.py](tests/conftest.py) provide:
+
+- `temp_dir` - Temporary directory for test files
+- `test_inventory_file` - Sample inventory YAML
+- `test_template_file` - Sample Jinja2 template
+- `test_backup_file` - Sample backup configuration
+- `mock_device` - Mock device dictionary for testing
+
+### Test Modules
+
+| Module | Coverage | Description |
+|--------|----------|-------------|
+| [test_backup.py](tests/test_backup.py) | Backup operations | Device backup, parallel execution |
+| [test_deployment.py](tests/test_deployment.py) | Deployment | Template rendering, config deployment |
+| [test_rollback.py](tests/test_rollback.py) | Rollback | Config restoration, backup selection |
+| [test_connection_manager.py](tests/test_connection_manager.py) | Connections | SSH pooling, device connectivity |
+| [test_inventory_loader.py](tests/test_inventory_loader.py) | Inventory | YAML parsing, device filtering |
+| [test_template_engine.py](tests/test_template_engine.py) | Templates | Jinja2 rendering, variable substitution |
+| [test_utils.py](tests/test_utils.py) | Utilities | Helper functions, validation |
+| [test_full_workflow.py](tests/integration/test_full_workflow.py) | Integration | End-to-end workflows |
+
+### Continuous Testing
+
+```bash
+# Watch mode (requires pytest-watch)
+pip install pytest-watch
+ptw
+
+# Run tests before commit (recommended)
+pytest && git commit -m "Your message"
 ```
 
 ## Architecture
