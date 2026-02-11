@@ -15,15 +15,8 @@ topology:
     spine1:
       kind: nokia_srlinux
       mgmt-ipv4: 172.21.20.11
+      memory: 1g
       startup-config: ../configs/spine1.cfg
-      labels:
-        role: spine
-        tier: core
-
-    spine2:
-      kind: nokia_srlinux
-      mgmt-ipv4: 172.21.20.12
-      startup-config: ../configs/spine2.cfg
       labels:
         role: spine
         tier: core
@@ -32,6 +25,7 @@ topology:
     leaf1:
       kind: nokia_srlinux
       mgmt-ipv4: 172.21.20.13
+      memory: 1g
       startup-config: ../configs/leaf1.cfg
       labels:
         role: leaf
@@ -40,23 +34,8 @@ topology:
     leaf2:
       kind: nokia_srlinux
       mgmt-ipv4: 172.21.20.14
+      memory: 1g
       startup-config: ../configs/leaf2.cfg
-      labels:
-        role: leaf
-        tier: access
-
-    leaf3:
-      kind: nokia_srlinux
-      mgmt-ipv4: 172.21.20.15
-      startup-config: ../configs/leaf3.cfg
-      labels:
-        role: leaf
-        tier: access
-
-    leaf4:
-      kind: nokia_srlinux
-      mgmt-ipv4: 172.21.20.16
-      startup-config: ../configs/leaf4.cfg
       labels:
         role: leaf
         tier: access
@@ -65,11 +44,3 @@ topology:
     # Spine1 to Leaf connections
     - endpoints: ["spine1:e1-1", "leaf1:e1-1"]
     - endpoints: ["spine1:e1-2", "leaf2:e1-1"]
-    - endpoints: ["spine1:e1-3", "leaf3:e1-1"]
-    - endpoints: ["spine1:e1-4", "leaf4:e1-1"]
-
-    # Spine2 to Leaf connections
-    - endpoints: ["spine2:e1-1", "leaf1:e1-2"]
-    - endpoints: ["spine2:e1-2", "leaf2:e1-2"]
-    - endpoints: ["spine2:e1-3", "leaf3:e1-2"]
-    - endpoints: ["spine2:e1-4", "leaf4:e1-2"]

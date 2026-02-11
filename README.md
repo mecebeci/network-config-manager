@@ -113,7 +113,7 @@ The `netconfig.py` command provides a unified interface for all operations:
 python3 netconfig.py backup --all
 
 # Backup specific devices
-python3 netconfig.py backup --device spine1 --device spine2
+python3 netconfig.py backup --device spine1 --device leaf1
 
 # Backup by role
 python3 netconfig.py backup --role spine --parallel
@@ -227,11 +227,8 @@ network-config-manager/
 │   ├── backups/            # Stored backups (timestamped)
 │   ├── templates/          # Jinja2 templates (.j2 files)
 │   ├── spine1.cfg          # Baseline config for spine1
-│   ├── spine2.cfg          # Baseline config for spine2
 │   ├── leaf1.cfg           # Baseline config for leaf1
-│   ├── leaf2.cfg           # Baseline config for leaf2
-│   ├── leaf3.cfg           # Baseline config for leaf3
-│   └── leaf4.cfg           # Baseline config for leaf4
+│   └── leaf2.cfg           # Baseline config for leaf2
 │
 ├── docs/                   # Documentation
 │   └── NETCONFIG_USAGE.md  # Complete CLI usage guide
@@ -258,35 +255,46 @@ network-config-manager/
 
 ## Lab Topology
 
-Six-device SR Linux spine-leaf topology:
+Three-device SR Linux spine-leaf topology:
 
-![SR Linux spine-leaf topology with 2 spine switches and 4 leaf switches in a dual-homed configuration](docs/lab_topology.png)
+![SR Linux spine-leaf topology with 1 spine switch and 2 leaf switches](docs/lab_topology.png)
 
 ### Device Details
 
-| Device | Role  | IP Address    | Description |
-|--------|-------|---------------|-------------|
-| spine1 | spine | 172.20.20.11  | Core spine switch |
-| spine2 | spine | 172.20.20.12  | Core spine switch |
-| leaf1  | leaf  | 172.20.20.13  | Top-of-Rack switch |
-| leaf2  | leaf  | 172.20.20.14  | Top-of-Rack switch |
-| leaf3  | leaf  | 172.20.20.15  | Top-of-Rack switch |
-| leaf4  | leaf  | 172.20.20.16  | Top-of-Rack switch |
+| Device | Role  | IP Address    | Memory | Description |
+|--------|-------|---------------|--------|-------------|
+| spine1 | spine | 172.21.20.11  | 1GB    | Core spine switch |
+| leaf1  | leaf  | 172.21.20.13  | 1GB    | Top-of-Rack switch |
+| leaf2  | leaf  | 172.21.20.14  | 1GB    | Top-of-Rack switch |
 
-Each leaf is dual-homed to both spines for redundancy.
+Simple point-to-point connections from spine to each leaf switch.
+
+### Resource Considerations
+
+**Original Design:** The project architecture supports full spine-leaf topologies with multiple spines and leaves. The original design included 2 spines and 4 leaves (6 devices).
+
+**Current Configuration:** This implementation uses a scaled-down topology (1 spine + 2 leaves) to accommodate hardware resource constraints. Each SR Linux device requires approximately 1-2GB RAM, so the current 3-device setup needs ~3-4GB total RAM.
+
+**Scalability:** The codebase fully supports larger topologies. To scale up:
+- Edit [lab/topology.yaml](lab/topology.yaml) to add more devices
+- Update [inventory/devices.yaml](inventory/devices.yaml) accordingly
+- Ensure sufficient RAM (2GB per device recommended)
+- The automation scripts handle any number of devices through parallel execution
+
+**Note:** The reduced topology doesn't limit the project's functionality - all features (backup, deployment, rollback, parallel operations) work identically regardless of device count.
 
 ### Baseline Configurations
 
 The [configs/](configs/) directory includes baseline configuration files for all lab devices:
 
-- **Spine configurations** ([spine1.cfg](configs/spine1.cfg), [spine2.cfg](configs/spine2.cfg))
-  - 4 uplink interfaces (ethernet-1/1 to ethernet-1/4) connected to leaf switches
-  - Management interface with static IP (172.21.20.11-12/24)
+- **Spine configuration** ([spine1.cfg](configs/spine1.cfg))
+  - 2 uplink interfaces (ethernet-1/1 to ethernet-1/2) connected to leaf switches
+  - Management interface with static IP (172.21.20.11/24)
   - System information and interface descriptions
 
-- **Leaf configurations** ([leaf1.cfg](configs/leaf1.cfg), [leaf2.cfg](configs/leaf2.cfg), [leaf3.cfg](configs/leaf3.cfg), [leaf4.cfg](configs/leaf4.cfg))
-  - 2 uplink interfaces (ethernet-1/1 to ethernet-1/2) dual-homed to spines
-  - Management interface with static IP (172.21.20.13-16/24)
+- **Leaf configurations** ([leaf1.cfg](configs/leaf1.cfg), [leaf2.cfg](configs/leaf2.cfg))
+  - 1 uplink interface (ethernet-1/1) connected to spine
+  - Management interface with static IP (172.21.20.13-14/24)
   - System information and interface descriptions
 
 These files serve as:

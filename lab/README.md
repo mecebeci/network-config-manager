@@ -2,54 +2,45 @@
 
 ## Overview
 
-This Containerlab topology implements a realistic spine-leaf data center network using the Nokia SR Linux network operating system. The topology consists of 2 spine switches and 4 leaf switches, providing redundant connectivity suitable for testing network automation, SNMP monitoring, and modern data center networking protocols.
+This Containerlab topology implements a simplified spine-leaf data center network using the Nokia SR Linux network operating system. The topology consists of 1 spine switch and 2 leaf switches, providing a practical lab environment suitable for testing network automation, configuration management, and modern data center networking protocols.
 
 ## Topology Diagram
 
 ```text
-                    ┌──────────┐         ┌──────────┐
-                    │  spine1  │         │  spine2  │
-                    │172.21.20.11│       │172.21.20.12│
-                    └─────┬────┘         └─────┬────┘
-                          │                    │
-           ┌──────────────┼────────────────────┼──────────────┐
-           │              │                    │              │
-           │              │                    │              │
-      ┌────┴────┐    ┌────┴────┐         ┌────┴────┐    ┌────┴────┐
-      │  leaf1  │    │  leaf2  │         │  leaf3  │    │  leaf4  │
-      │172.21   │    │172.21   │         │172.21   │    │172.21   │
-      │  .20.13 │    │  .20.14 │         │  .20.15 │    │  .20.16 │
-      └─────────┘    └─────────┘         └─────────┘    └─────────┘
+                    ┌──────────┐
+                    │  spine1  │
+                    │172.21.20.11│
+                    └─────┬────┘
+                          │
+              ┌───────────┴───────────┐
+              │                       │
+         ┌────┴────┐             ┌────┴────┐
+         │  leaf1  │             │  leaf2  │
+         │172.21   │             │172.21   │
+         │  .20.13 │             │  .20.14 │
+         └─────────┘             └─────────┘
 
 ```
 
 ### Connectivity Matrix
 
-Each leaf switch is dual-homed to both spine switches for redundancy:
+Simple point-to-point connections from spine to leaf switches:
 
 | Leaf Switch | Interface | Connected To | Remote Interface |
 | --- | --- | --- | --- |
 | leaf1 | e1-1 | spine1 | e1-1 |
-| leaf1 | e1-2 | spine2 | e1-1 |
 | leaf2 | e1-1 | spine1 | e1-2 |
-| leaf2 | e1-2 | spine2 | e1-2 |
-| leaf3 | e1-1 | spine1 | e1-3 |
-| leaf3 | e1-2 | spine2 | e1-3 |
-| leaf4 | e1-1 | spine1 | e1-4 |
-| leaf4 | e1-2 | spine2 | e1-4 |
 
 ## Device Inventory
 
-| Hostname | Management IP | Role | Type | Purpose |
-| --- | --- | --- | --- | --- |
-| spine1 | 172.21.20.11 | Spine | ixr-d3l | Core aggregation switch |
-| spine2 | 172.21.20.12 | Spine | ixr-d3l | Core aggregation switch |
-| leaf1 | 172.21.20.13 | Leaf | ixr-d3l | Top-of-Rack access switch |
-| leaf2 | 172.21.20.14 | Leaf | ixr-d3l | Top-of-Rack access switch |
-| leaf3 | 172.21.20.15 | Leaf | ixr-d3l | Top-of-Rack access switch |
-| leaf4 | 172.21.20.16 | Leaf | ixr-d3l | Top-of-Rack access switch |
+| Hostname | Management IP | Role | Type | Memory | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| spine1 | 172.21.20.11 | Spine | ixr-d3l | 1GB | Core aggregation switch |
+| leaf1 | 172.21.20.13 | Leaf | ixr-d3l | 1GB | Top-of-Rack access switch |
+| leaf2 | 172.21.20.14 | Leaf | ixr-d3l | 1GB | Top-of-Rack access switch |
 
 **Management Network:** 172.21.20.0/24
+**Total Memory Required:** ~3GB RAM (1GB per device)
 
 ## Prerequisites
 
@@ -84,9 +75,10 @@ containerlab version
 ```
 
 **System Resources**
-   * Minimum: 8GB RAM, 4 CPU cores
-   * Recommended: 16GB RAM, 8 CPU cores
-   * Disk space: ~10GB for images and containers
+   * Minimum: 4GB RAM, 2 CPU cores
+   * Recommended: 6GB RAM, 4 CPU cores
+   * Disk space: ~5GB for images and containers
+   * Per-device memory limit: 1GB (3GB total for 3 devices)
 
 ### Pull SR Linux Image
 
@@ -133,11 +125,8 @@ SSH to any device using the management IP:
 
 ```bash
 ssh admin@172.21.20.11  # spine1
-ssh admin@172.21.20.12  # spine2
 ssh admin@172.21.20.13  # leaf1
 ssh admin@172.21.20.14  # leaf2
-ssh admin@172.21.20.15  # leaf3
-ssh admin@172.21.20.16  # leaf4
 ```
 
 **Default Credentials:**
@@ -219,13 +208,13 @@ commit now
 
 After lab deployment, verify the topology:
 
-**From spine1, check LLDP neighbors (should see all 4 leaves):**
+**From spine1, check LLDP neighbors (should see both leaf switches):**
 ```bash
 ssh admin@172.21.20.11
 show system lldp neighbor
 ```
 
-**From leaf1, check LLDP neighbors (should see both spines):**
+**From leaf1, check LLDP neighbors (should see spine1):**
 ```bash
 ssh admin@172.21.20.13
 show system lldp neighbor
@@ -281,7 +270,7 @@ The topology references config files in the `../configs/` directory. If these do
 **Temporary fix: Comment out startup-config lines in topology.yaml or create placeholder config files:**
 ```bash
 mkdir -p ../configs
-touch ../configs/{spine1,spine2,leaf1,leaf2,leaf3,leaf4}.cfg
+touch ../configs/{spine1,leaf1,leaf2}.cfg
 ```
 
 #### 5. Port Conflicts

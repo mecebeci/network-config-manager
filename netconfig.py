@@ -7,6 +7,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent / '.env'
+    load_dotenv(dotenv_path=env_path)
+except ImportError:
+    # python-dotenv not installed, skip auto-loading
+    pass
+
 # Add project root to Python path
 project_root = Path(__file__).parent
 if str(project_root) not in sys.path:
@@ -59,7 +68,7 @@ Examples:
   netconfig backup --all
       Backup all devices in parallel
 
-  netconfig backup --device spine1 --device spine2
+  netconfig backup --device spine1 --device leaf1
       Backup specific devices
 
   netconfig backup --role spine --no-parallel

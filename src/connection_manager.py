@@ -80,6 +80,8 @@ class ConnectionManager:
             "password": self.device["password"],
             "timeout": self.device.get("timeout", 10),
             "session_log": None,  # Can be configured for debugging
+            "use_keys": False,  # Disable SSH key authentication
+            "allow_agent": False,  # Disable SSH agent
         }
 
         attempt = 0

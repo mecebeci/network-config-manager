@@ -57,7 +57,7 @@ netconfig backup [options]
 netconfig backup --all
 
 # Backup specific devices
-netconfig backup --device spine1 --device spine2
+netconfig backup --device spine1 --device leaf1
 
 # Backup all spine devices sequentially
 netconfig backup --role spine --no-parallel
@@ -160,7 +160,7 @@ netconfig rollback --device spine1 --latest
 netconfig rollback --device spine1 --backup configs/backups/spine1_20250203_143022.cfg
 
 # Rollback multiple devices to latest
-netconfig rollback --device spine1 --device spine2 --latest
+netconfig rollback --device spine1 --device leaf1 --latest
 
 # Rollback all spine devices
 netconfig rollback --role spine --latest

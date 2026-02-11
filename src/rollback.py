@@ -850,7 +850,7 @@ class ConfigRollback:
         Example:
             devices_and_backups = [
                 (device1, "configs/backups/spine1_20250203_143022.cfg"),
-                (device2, "configs/backups/spine2_20250203_143025.cfg")
+                (device2, "configs/backups/leaf1_20250203_143025.cfg")
             ]
             results = rollback_mgr.rollback_multiple_devices(
                 devices_and_backups,

@@ -5,7 +5,7 @@ settings:
   # Global connection settings
   default_username: "${DEVICE_USERNAME}"
   default_password: "${DEVICE_PASSWORD}"
-  default_device_type: "nokia_sros"  # Default device type for Netmiko (SR Linux compatibility)
+  default_device_type: "nokia_srl"  # Nokia SR Linux device type for Netmiko
   connection_timeout: 10  # Connection timeout in seconds
 
 devices:
@@ -14,18 +14,8 @@ devices:
     ip: 172.21.20.11
     role: spine
     location: lab
-    device_type: nokia_sros
+    device_type: nokia_srl
     description: "Spine switch 1 - Core layer"
-    vendor: Nokia
-    model: "SR Linux IXR-D3L"
-    tier: core
-
-  - name: spine2
-    ip: 172.21.20.12
-    role: spine
-    location: lab
-    device_type: nokia_sros
-    description: "Spine switch 2 - Core layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"
     tier: core
@@ -35,7 +25,7 @@ devices:
     ip: 172.21.20.13
     role: leaf
     location: lab
-    device_type: nokia_sros
+    device_type: nokia_srl
     description: "Leaf switch 1 - Access layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"
@@ -45,28 +35,8 @@ devices:
     ip: 172.21.20.14
     role: leaf
     location: lab
-    device_type: nokia_sros
+    device_type: nokia_srl
     description: "Leaf switch 2 - Access layer"
-    vendor: Nokia
-    model: "SR Linux IXR-D3L"
-    tier: access
-
-  - name: leaf3
-    ip: 172.21.20.15
-    role: leaf
-    location: lab
-    device_type: nokia_sros
-    description: "Leaf switch 3 - Access layer"
-    vendor: Nokia
-    model: "SR Linux IXR-D3L"
-    tier: access
-
-  - name: leaf4
-    ip: 172.21.20.16
-    role: leaf
-    location: lab
-    device_type: nokia_sros
-    description: "Leaf switch 4 - Access layer"
     vendor: Nokia
     model: "SR Linux IXR-D3L"
     tier: access

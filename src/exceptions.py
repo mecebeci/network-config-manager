@@ -85,7 +85,7 @@ class TimeoutError(Exception):
         device_name (str): Name or identifier of the device (optional)
 
     Example:
-        raise TimeoutError("Connection timeout after 30 seconds", device_name="spine2")
+        raise TimeoutError("Connection timeout after 30 seconds", device_name="spine1")
     """
 
     def __init__(self, message: str, device_name: str = None):

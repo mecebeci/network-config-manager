@@ -396,7 +396,7 @@ class ConfigDeployment:
             )
 
             # Deploy with device-specific variables
-            devices = [spine1, spine2]
+            devices = [spine1, leaf1]
             variables = [
                 {'ntp_server': '10.0.0.1', 'priority': 1},
                 {'ntp_server': '10.0.0.2', 'priority': 2}

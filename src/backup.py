@@ -86,6 +86,31 @@ class ConfigBackup:
             f"Retention: {retention_days} days"
         )
 
+    def _substitute_env_vars(self, value: str) -> str:
+        """
+        Substitute environment variables in string values.
+
+        Replaces ${VAR_NAME} with the value of the environment variable VAR_NAME.
+
+        Args:
+            value: String that may contain environment variable placeholders
+
+        Returns:
+            String with environment variables substituted
+        """
+        if not isinstance(value, str):
+            return value
+
+        import re
+        # Match ${VAR_NAME} pattern
+        pattern = r'\$\{([^}]+)\}'
+
+        def replace_var(match):
+            var_name = match.group(1)
+            return os.environ.get(var_name, match.group(0))
+
+        return re.sub(pattern, replace_var, value)
+
     def _merge_device_settings(self, device: Dict[str, Any]) -> Dict[str, Any]:
         """
         Merge device-specific settings with global settings.
@@ -107,12 +132,14 @@ class ConfigBackup:
         # Create merged device config
         merged = device.copy()
 
-        # Add credentials from global settings if not in device
+        # Add credentials from global settings if not in device (with env var substitution)
         if 'username' not in merged:
-            merged['username'] = settings.get('default_username')
+            username = settings.get('default_username')
+            merged['username'] = self._substitute_env_vars(username)
 
         if 'password' not in merged:
-            merged['password'] = settings.get('default_password')
+            password = settings.get('default_password')
+            merged['password'] = self._substitute_env_vars(password)
 
         if 'timeout' not in merged:
             merged['timeout'] = settings.get('connection_timeout', 10)
