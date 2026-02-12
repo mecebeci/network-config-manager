@@ -2,45 +2,63 @@
 
 ## Overview
 
-This Containerlab topology implements a simplified spine-leaf data center network using the Nokia SR Linux network operating system. The topology consists of 1 spine switch and 2 leaf switches, providing a practical lab environment suitable for testing network automation, configuration management, and modern data center networking protocols.
+This Containerlab topology implements a proper spine-leaf data center network using the Nokia SR Linux network operating system. The topology consists of 2 spine switches and 2 leaf switches with full mesh connectivity, providing true high availability and redundancy. This is the minimum viable configuration for a real spine-leaf architecture, suitable for testing network automation, configuration management, and modern data center networking protocols with fault tolerance.
 
 ## Topology Diagram
 
 ```text
-                    ┌──────────┐
-                    │  spine1  │
-                    │172.21.20.11│
-                    └─────┬────┘
-                          │
-              ┌───────────┴───────────┐
-              │                       │
-         ┌────┴────┐             ┌────┴────┐
-         │  leaf1  │             │  leaf2  │
-         │172.21   │             │172.21   │
-         │  .20.13 │             │  .20.14 │
-         └─────────┘             └─────────┘
+                 ┌──────────┐         ┌──────────┐
+                 │  spine1  │         │  spine2  │
+                 │172.21.20.11│       │172.21.20.12│
+                 └─────┬────┘         └─────┬────┘
+                       │   ╲       ╱   │
+                       │     ╲   ╱     │
+                       │       ╳       │  (Full Mesh)
+                       │     ╱   ╲     │
+                       │   ╱       ╲   │
+                  ┌────┴────┐     ┌────┴────┐
+                  │  leaf1  │     │  leaf2  │
+                  │172.21   │     │172.21   │
+                  │  .20.13 │     │  .20.14 │
+                  └─────────┘     └─────────┘
 
 ```
 
 ### Connectivity Matrix
 
-Simple point-to-point connections from spine to leaf switches:
+Full mesh connectivity - every leaf connects to every spine for redundancy:
 
-| Leaf Switch | Interface | Connected To | Remote Interface |
+| Connection | Leaf Interface | Spine | Spine Interface |
 | --- | --- | --- | --- |
-| leaf1 | e1-1 | spine1 | e1-1 |
-| leaf2 | e1-1 | spine1 | e1-2 |
+| leaf1 → spine1 | e1-1 | spine1 | e1-1 |
+| leaf1 → spine2 | e1-2 | spine2 | e1-1 |
+| leaf2 → spine1 | e1-1 | spine1 | e1-2 |
+| leaf2 → spine2 | e1-2 | spine2 | e1-2 |
+
+This creates true spine-leaf redundancy: if any single spine fails, all leaves maintain connectivity through the remaining spine.
 
 ## Device Inventory
 
 | Hostname | Management IP | Role | Type | Memory | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| spine1 | 172.21.20.11 | Spine | ixr-d3l | 1GB | Core aggregation switch |
+| spine1 | 172.21.20.11 | Spine | ixr-d3l | 1GB | Core aggregation switch (redundant pair) |
+| spine2 | 172.21.20.12 | Spine | ixr-d3l | 1GB | Core aggregation switch (redundant pair) |
 | leaf1 | 172.21.20.13 | Leaf | ixr-d3l | 1GB | Top-of-Rack access switch |
 | leaf2 | 172.21.20.14 | Leaf | ixr-d3l | 1GB | Top-of-Rack access switch |
 
-**Management Network:** 172.21.20.0/24
-**Total Memory Required:** ~3GB RAM (1GB per device)
+Management Network: 172.21.20.0/24
+Total Memory Required: ~4GB RAM (1GB per device)
+
+### Spine-Leaf Architecture Benefits
+
+This topology demonstrates a proper spine-leaf architecture with the following benefits:
+
+- High Availability: Dual spine redundancy eliminates single point of failure
+- Load Balancing: Traffic is distributed across both spine switches
+- Predictable Performance: All leaves are equidistant (1 hop) from all spines
+- Horizontal Scalability: Easy to add more leaf switches without changing spine count
+- Fault Tolerance: If one spine fails, all connectivity maintained through the other
+- Simplified Operations: Consistent, predictable network behavior
 
 ## Prerequisites
 
@@ -75,10 +93,10 @@ containerlab version
 ```
 
 **System Resources**
-   * Minimum: 4GB RAM, 2 CPU cores
-   * Recommended: 6GB RAM, 4 CPU cores
-   * Disk space: ~5GB for images and containers
-   * Per-device memory limit: 1GB (3GB total for 3 devices)
+   * Minimum: 6GB RAM, 2 CPU cores
+   * Recommended: 8GB RAM, 4 CPU cores
+   * Disk space: ~6GB for images and containers
+   * Per-device memory limit: 1GB (4GB total for 4 devices)
 
 ### Pull SR Linux Image
 
@@ -125,6 +143,7 @@ SSH to any device using the management IP:
 
 ```bash
 ssh admin@172.21.20.11  # spine1
+ssh admin@172.21.20.12  # spine2
 ssh admin@172.21.20.13  # leaf1
 ssh admin@172.21.20.14  # leaf2
 ```
@@ -212,13 +231,17 @@ After lab deployment, verify the topology:
 ```bash
 ssh admin@172.21.20.11
 show system lldp neighbor
+# Expected: leaf1 (e1-1) and leaf2 (e1-2)
 ```
 
-**From leaf1, check LLDP neighbors (should see spine1):**
+**From leaf1, check LLDP neighbors (should see both spine switches):**
 ```bash
 ssh admin@172.21.20.13
 show system lldp neighbor
+# Expected: spine1 (e1-1) and spine2 (e1-2)
 ```
+
+This confirms full mesh connectivity - each leaf has redundant paths to both spines.
 
 ## Troubleshooting
 
@@ -270,7 +293,7 @@ The topology references config files in the `../configs/` directory. If these do
 **Temporary fix: Comment out startup-config lines in topology.yaml or create placeholder config files:**
 ```bash
 mkdir -p ../configs
-touch ../configs/{spine1,leaf1,leaf2}.cfg
+touch ../configs/{spine1,spine2,leaf1,leaf2}.cfg
 ```
 
 #### 5. Port Conflicts

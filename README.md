@@ -227,6 +227,7 @@ network-config-manager/
 │   ├── backups/            # Stored backups (timestamped)
 │   ├── templates/          # Jinja2 templates (.j2 files)
 │   ├── spine1.cfg          # Baseline config for spine1
+│   ├── spine2.cfg          # Baseline config for spine2
 │   ├── leaf1.cfg           # Baseline config for leaf1
 │   └── leaf2.cfg           # Baseline config for leaf2
 │
@@ -255,52 +256,65 @@ network-config-manager/
 
 ## Lab Topology
 
-Three-device SR Linux spine-leaf topology:
+Four-device SR Linux spine-leaf topology with full redundancy:
 
-![SR Linux spine-leaf topology with 1 spine switch and 2 leaf switches](docs/lab_topology.png)
+![SR Linux spine-leaf topology with 2 spine switches and 2 leaf switches](docs/lab_topology.png)
 
 ### Device Details
 
 | Device | Role  | IP Address    | Memory | Description |
 |--------|-------|---------------|--------|-------------|
-| spine1 | spine | 172.21.20.11  | 1GB    | Core spine switch |
+| spine1 | spine | 172.21.20.11  | 1GB    | Core spine switch (redundant pair) |
+| spine2 | spine | 172.21.20.12  | 1GB    | Core spine switch (redundant pair) |
 | leaf1  | leaf  | 172.21.20.13  | 1GB    | Top-of-Rack switch |
 | leaf2  | leaf  | 172.21.20.14  | 1GB    | Top-of-Rack switch |
 
-Simple point-to-point connections from spine to each leaf switch.
+Full mesh connectivity: each leaf connects to both spines for high availability.
 
 ### Resource Considerations
 
-**Original Design:** The project architecture supports full spine-leaf topologies with multiple spines and leaves. The original design included 2 spines and 4 leaves (6 devices).
+Original Design: The project was initially designed with a 6-device topology (2 spines + 4 leaves) to demonstrate larger-scale network automation. However, each SR Linux device requires approximately 2GB RAM.
 
-**Current Configuration:** This implementation uses a scaled-down topology (1 spine + 2 leaves) to accommodate hardware resource constraints. Each SR Linux device requires approximately 1-2GB RAM, so the current 3-device setup needs ~3-4GB total RAM.
+Current Configuration: This implementation uses a 4-device topology (2 spines + 2 leaves) which maintains proper spine-leaf architecture with full redundancy while being practical for laptop/workstation environments. Total RAM requirement: ~4GB.
 
-**Scalability:** The codebase fully supports larger topologies. To scale up:
-- Edit [lab/topology.yaml](lab/topology.yaml) to add more devices
+Why 4 Devices (2+2)?
+- Maintains true spine-leaf architecture (minimum 2 spines for redundancy)
+- No single point of failure - if one spine fails, traffic continues through the other
+- Demonstrates all key spine-leaf principles: redundancy, load distribution, scalability
+- Practical for resource-constrained lab environments
+
+Spine-Leaf Architecture Benefits:
+- High availability: Dual spine redundancy eliminates single point of failure
+- Load balancing: Traffic distributed across both spines
+- Horizontal scalability: Easy to add more leaf switches
+- Predictable latency: All leaves are equal distance (1 hop) from spines
+
+Scalability: The codebase fully supports larger topologies. To scale up:
+- Edit [lab/topology.yaml](lab/topology.yaml) to add more spines or leaves
 - Update [inventory/devices.yaml](inventory/devices.yaml) accordingly
-- Ensure sufficient RAM (2GB per device recommended)
-- The automation scripts handle any number of devices through parallel execution
+- Ensure sufficient RAM (1-2GB per device recommended)
+- All automation features (parallel execution, error isolation) scale automatically
 
-**Note:** The reduced topology doesn't limit the project's functionality - all features (backup, deployment, rollback, parallel operations) work identically regardless of device count.
+Note: While larger topologies provide more realistic scenarios, this 4-device setup demonstrates all core concepts and automation capabilities effectively.
 
 ### Baseline Configurations
 
 The [configs/](configs/) directory includes baseline configuration files for all lab devices:
 
-- **Spine configuration** ([spine1.cfg](configs/spine1.cfg))
+- Spine configurations ([spine1.cfg](configs/spine1.cfg), [spine2.cfg](configs/spine2.cfg))
   - 2 uplink interfaces (ethernet-1/1 to ethernet-1/2) connected to leaf switches
-  - Management interface with static IP (172.21.20.11/24)
+  - Management interface with static IP (172.21.20.11-12/24)
   - System information and interface descriptions
 
-- **Leaf configurations** ([leaf1.cfg](configs/leaf1.cfg), [leaf2.cfg](configs/leaf2.cfg))
-  - 1 uplink interface (ethernet-1/1) connected to spine
+- Leaf configurations ([leaf1.cfg](configs/leaf1.cfg), [leaf2.cfg](configs/leaf2.cfg))
+  - 2 uplink interfaces (ethernet-1/1 to ethernet-1/2) dual-homed to both spines
   - Management interface with static IP (172.21.20.13-14/24)
   - System information and interface descriptions
 
 These files serve as:
-- **Reference configurations** - Example SR Linux configurations for the lab topology
-- **Deployment baseline** - Starting point for configuration management operations
-- **Rollback targets** - Known-good configurations for testing rollback functionality
+- Reference configurations - Example SR Linux configurations for the lab topology
+- Deployment baseline - Starting point for configuration management operations
+- Rollback targets - Known-good configurations for testing rollback functionality
 
 ## Workflow Examples
 
