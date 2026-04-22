@@ -160,13 +160,12 @@ class InventoryLoader:
         Get the global settings from the inventory.
 
         Returns:
-            Dictionary containing global settings (credentials, SNMP config, etc.)
+            Dictionary containing global settings (credentials, connection config, etc.)
 
         Example:
             >>> loader = InventoryLoader()
             >>> settings = loader.get_settings()
             >>> print(f"Default username: {settings['default_username']}")
-            >>> print(f"SNMP community: {settings['snmp_community']}")
         """
         return self.settings.copy()
 
@@ -204,8 +203,6 @@ class InventoryLoader:
             'default_password',
             'default_device_type',
             'connection_timeout',
-            'snmp_community',
-            'snmp_port'
         ]
 
         for setting in required_settings:
@@ -221,7 +218,7 @@ class InventoryLoader:
                     f"Inventory validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
                 )
 
-        required_device_fields = ['name', 'ip', 'role', 'location', 'device_type', 'snmp_enabled']
+        required_device_fields = ['name', 'ip', 'role', 'location', 'device_type']
 
         device_names = set()
         device_ips = set()
@@ -268,13 +265,6 @@ class InventoryLoader:
                     f"Device '{device_id}': device_type cannot be empty"
                 )
 
-            # Validate snmp_enabled is boolean
-            if 'snmp_enabled' in device:
-                if not isinstance(device['snmp_enabled'], bool):
-                    errors.append(
-                        f"Device '{device_id}': snmp_enabled must be boolean (true/false)"
-                    )
-
         # Raise all errors if any found
         if errors:
             raise ValueError(
@@ -303,25 +293,6 @@ class InventoryLoader:
             device.copy()
             for device in self.devices
             if device.get('location') == location
-        ]
-
-    def get_snmp_enabled_devices(self) -> List[Dict[str, Any]]:
-        """
-        Get all devices with SNMP enabled.
-
-        Returns:
-            List of devices that have SNMP enabled
-
-        Example:
-            >>> loader = InventoryLoader()
-            >>> snmp_devices = loader.get_snmp_enabled_devices()
-            >>> for device in snmp_devices:
-            ...     print(f"{device['name']} - SNMP enabled at {device['ip']}")
-        """
-        return [
-            device.copy()
-            for device in self.devices
-            if device.get('snmp_enabled', False)
         ]
 
     def get_device_count(self) -> int:
@@ -413,16 +384,14 @@ if __name__ == "__main__":
         print("\n" + "="*60)
         print("ALL DEVICES")
         print("="*60)
-        print(f"{'Name':<12} {'IP':<15} {'Role':<10} {'Location':<12} {'SNMP':<6}")
-        print("-" * 60)
+        print(f"{'Name':<12} {'IP':<15} {'Role':<10} {'Location':<12}")
+        print("-" * 54)
         for device in all_devices:
-            snmp_status = "Yes" if device.get('snmp_enabled') else "No"
             print(
                 f"{device['name']:<12} "
                 f"{device['ip']:<15} "
                 f"{device['role']:<10} "
-                f"{device.get('location', 'N/A'):<12} "
-                f"{snmp_status:<6}"
+                f"{device.get('location', 'N/A'):<12}"
             )
 
         # Example: Get specific device
@@ -442,13 +411,6 @@ if __name__ == "__main__":
         spines = loader.get_devices_by_role("spine")
         for spine in spines:
             print(f"  {spine['name']}: {spine['ip']} - {spine.get('description', 'N/A')}")
-
-        # Example: SNMP-enabled devices
-        print("\n" + "="*60)
-        print("SNMP-ENABLED DEVICES")
-        print("="*60)
-        snmp_devices = loader.get_snmp_enabled_devices()
-        print(f"  Found {len(snmp_devices)} devices with SNMP enabled")
 
         print("\n✓ All tests completed successfully!")
 
