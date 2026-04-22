@@ -1,0 +1,50 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Git
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and reports
+logs/
+*.log
+htmlcov/
+.coverage
+coverage.xml
+
+# Tests (not needed in production image)
+tests/
+pytest.ini
+.pytest_cache/
+
+# Containerlab runtime
+clab-*/
+lab/clab-*/
+
+# Environment (use --env-file or ENV instead)
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docs (not needed in runtime)
+docs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak

@@ -1,0 +1,26 @@
+#!/bin/bash
+# Wrapper script for network-config-manager Docker container
+
+DOCKER_IMAGE="netconfig"
+DOCKER_NETWORK="srlinux-mgmt"
+BACKUP_DIR="$(pwd)/configs/backups"
+
+# Build docker run arguments
+DOCKER_ARGS="--rm"
+
+# Attach to lab network if it exists
+if docker network inspect "$DOCKER_NETWORK" &>/dev/null; then
+    DOCKER_ARGS="$DOCKER_ARGS --network $DOCKER_NETWORK"
+fi
+
+# Mount backups directory if it exists
+if [ -d "$BACKUP_DIR" ]; then
+    DOCKER_ARGS="$DOCKER_ARGS -v $BACKUP_DIR:/app/configs/backups"
+fi
+
+# Load .env file if present in current directory
+if [ -f "$(pwd)/.env" ]; then
+    DOCKER_ARGS="$DOCKER_ARGS --env-file $(pwd)/.env"
+fi
+
+exec docker run $DOCKER_ARGS "$DOCKER_IMAGE" "$@"

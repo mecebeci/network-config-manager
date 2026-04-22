@@ -51,7 +51,47 @@ A comprehensive Python-based solution for automating multi-device network config
 
 ## Quick Start
 
-### 1. Installation
+### Option A: Docker (Recommended)
+
+```bash
+# Build the image
+docker build -t netconfig .
+
+# Run commands
+docker run netconfig list --devices
+docker run netconfig validate --inventory
+docker run netconfig list --templates
+
+# With custom credentials
+docker run --env-file .env netconfig backup --device spine1
+
+# Connect to Containerlab network (required for device communication)
+docker run --network srlinux-mgmt netconfig backup --all
+
+# Persist backups to host
+docker run -v $(pwd)/configs/backups:/app/configs/backups \
+  --network srlinux-mgmt netconfig backup --all
+```
+
+#### Install as CLI Command
+
+A wrapper script is included in the project root. To install it system-wide:
+
+```bash
+sudo cp netconfig /usr/local/bin/
+```
+
+Then from your project directory, you can just do:
+
+```bash
+netconfig list --devices
+netconfig backup --all
+netconfig deploy -t example_ntp.j2 --device spine1 --dry-run
+```
+
+The wrapper script auto-detects the Containerlab network, mounts the backups directory, and loads `.env` if present.
+
+### Option B: Local Installation
 
 ```bash
 # Clone repository
