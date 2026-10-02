@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from .connection_manager import ConnectionManager
+from .connection_manager import ConnectionManager, CONFIG_ERROR_PATTERN
 from .backup import ConfigBackup
 from .inventory_loader import InventoryLoader
 from .utils import (
@@ -796,7 +796,11 @@ class ConfigRollback:
                         # For SR Linux, use "enter candidate" mode
                         # This is a simplified approach - production systems may need more sophisticated handling
                         self.logger.debug("Applying configuration to SR Linux device")
-                        output = conn.send_config(clean_config.splitlines())
+                        output = conn.send_config(
+                            clean_config.splitlines(),
+                            error_pattern=CONFIG_ERROR_PATTERN
+                        )
+                        output += conn.commit()
                     else:
                         # For other devices, send as config commands
                         self.logger.debug("Applying configuration to device")

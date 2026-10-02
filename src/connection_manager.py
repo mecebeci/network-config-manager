@@ -20,6 +20,9 @@ from .exceptions import (
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Output lines SR Linux prints when it rejects a configuration command
+CONFIG_ERROR_PATTERN = r"^\s*(Parsing error|Error:)"
+
 
 class ConnectionManager:
     """
@@ -255,7 +258,11 @@ class ConnectionManager:
                 device_name=self.device_name
             )
 
-    def send_config(self, commands: Union[str, List[str]]) -> str:
+    def send_config(
+        self,
+        commands: Union[str, List[str]],
+        error_pattern: Optional[str] = None
+    ) -> str:
         """
         Send configuration commands to the device.
 
@@ -264,6 +271,8 @@ class ConnectionManager:
 
         Args:
             commands: Single command string or list of command strings
+            error_pattern: Optional regex; if device output matches it, the
+                command is treated as rejected and CommandExecutionError is raised
 
         Returns:
             str: Configuration output
@@ -282,7 +291,12 @@ class ConnectionManager:
                 f"Sending configuration to device '{self.device_name}': {commands}"
             )
 
-            output = self.connection.send_config_set(commands)
+            if error_pattern:
+                output = self.connection.send_config_set(
+                    commands, error_pattern=error_pattern
+                )
+            else:
+                output = self.connection.send_config_set(commands)
 
             logger.info(
                 f"Configuration applied successfully on device '{self.device_name}'"
@@ -297,6 +311,41 @@ class ConnectionManager:
                 f"Failed to apply configuration: {str(e)}",
                 device_name=self.device_name
             )
+
+    def commit(self) -> str:
+        """
+        Commit pending candidate configuration (SR Linux: 'commit stay').
+
+        Netmiko's send_config_set leaves the candidate uncommitted, and the
+        uncommitted changes are discarded on disconnect, so this must be
+        called after send_config.
+
+        Returns:
+            str: Commit output
+        """
+        if not self.is_connected():
+            raise ConnectionError(
+                "Not connected to device. Call connect() first.",
+                device_name=self.device_name
+            )
+
+        try:
+            output = self.connection.commit()
+            logger.info(f"Configuration committed on device '{self.device_name}'")
+            return output
+        except Exception as e:
+            logger.error(f"Commit failed on device '{self.device_name}': {e}")
+            raise CommandExecutionError(
+                f"Failed to commit configuration: {str(e)}",
+                device_name=self.device_name
+            )
+
+    def discard(self) -> None:
+        """Discard pending candidate changes (SR Linux: 'discard stay'). Best effort."""
+        try:
+            self.connection.send_command("discard stay", expect_string=r"#")
+        except Exception as e:
+            logger.warning(f"Discard failed on device '{self.device_name}': {e}")
 
     def __enter__(self):
         """

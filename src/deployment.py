@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from .connection_manager import ConnectionManager
+from .connection_manager import ConnectionManager, CONFIG_ERROR_PATTERN
 from .template_engine import TemplateEngine
 from .backup import ConfigBackup
 from .inventory_loader import InventoryLoader
@@ -301,7 +301,14 @@ class ConfigDeployment:
                     ]
 
                     # Deploy configuration using send_config
-                    output = conn.send_config(config_lines)
+                    try:
+                        output = conn.send_config(
+                            config_lines, error_pattern=CONFIG_ERROR_PATTERN
+                        )
+                        output += conn.commit()
+                    except CommandExecutionError:
+                        conn.discard()
+                        raise
                     result['output'] = output
 
                     self.logger.info(
@@ -751,7 +758,10 @@ END PREVIEW
                     f"Connected to '{device_name}', applying backup configuration"
                 )
 
-                output = conn.send_config(config_lines)
+                output = conn.send_config(
+                    config_lines, error_pattern=CONFIG_ERROR_PATTERN
+                )
+                conn.commit()
 
                 self.logger.info(
                     f"Rollback successful for '{device_name}'"
