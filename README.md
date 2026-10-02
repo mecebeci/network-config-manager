@@ -163,15 +163,15 @@ python3 netconfig.py backup --role spine --parallel
 
 ```bash
 # Dry-run deployment (preview only)
-python3 netconfig.py deploy -t ntp.j2 --device spine1 \
+python3 netconfig.py deploy -t example_ntp.j2 --device spine1 \
   --vars '{"ntp_server": "10.0.0.1"}' --dry-run
 
 # Deploy to all devices
-python3 netconfig.py deploy -t ntp.j2 --all \
+python3 netconfig.py deploy -t example_ntp.j2 --all \
   --vars '{"ntp_server": "10.0.0.1"}'
 
 # Deploy with variables from file
-python3 netconfig.py deploy -t snmp.j2 --role spine \
+python3 netconfig.py deploy -t example_snmp.j2 --role spine \
   --vars @variables.json
 ```
 
@@ -212,7 +212,7 @@ python3 netconfig.py list --devices --format json
 python3 netconfig.py validate --inventory
 
 # Validate specific template
-python3 netconfig.py validate --template ntp.j2
+python3 netconfig.py validate --template example_ntp.j2
 
 # Validate all templates
 python3 netconfig.py validate --templates
@@ -228,7 +228,7 @@ python3 netconfig.py validate --backup configs/backups/spine1.cfg
 python3 netconfig.py backup --all --verbose
 
 # Quiet output (errors only)
-python3 netconfig.py deploy -t ntp.j2 --all --quiet
+python3 netconfig.py deploy -t example_ntp.j2 --all --quiet
 
 # Custom inventory path
 python3 netconfig.py --config custom/devices.yaml list --devices
@@ -366,18 +366,18 @@ python3 netconfig.py backup --all
 
 # 2. Validate inventory and templates
 python3 netconfig.py validate --inventory
-python3 netconfig.py validate --template ntp.j2
+python3 netconfig.py validate --template example_ntp.j2
 
 # 3. Preview deployment (dry-run)
-python3 netconfig.py deploy -t ntp.j2 --device spine1 \
+python3 netconfig.py deploy -t example_ntp.j2 --device spine1 \
   --vars '{"ntp_server": "10.0.0.1"}' --dry-run
 
 # 4. Deploy to single device for testing
-python3 netconfig.py deploy -t ntp.j2 --device spine1 \
+python3 netconfig.py deploy -t example_ntp.j2 --device spine1 \
   --vars '{"ntp_server": "10.0.0.1"}'
 
 # 5. If successful, deploy to all
-python3 netconfig.py deploy -t ntp.j2 --all \
+python3 netconfig.py deploy -t example_ntp.j2 --all \
   --vars '{"ntp_server": "10.0.0.1"}' --parallel
 
 # 6. Verify and rollback if needed
@@ -407,7 +407,7 @@ python3 netconfig.py rollback --device spine1 --latest
 python3 netconfig.py backup --all --parallel
 
 # Deploy to all spine switches
-python3 netconfig.py deploy -t spine_config.j2 --role spine \
+python3 netconfig.py deploy -t example_ntp.j2 --role spine \
   --vars @spine_vars.json --parallel
 
 # Rollback all leaf switches
@@ -573,7 +573,7 @@ pytest && git commit -m "Your message"
 | Command | Description | Example |
 |---------|-------------|---------|
 | `backup` | Backup device configurations | `netconfig.py backup --all` |
-| `deploy` | Deploy from templates | `netconfig.py deploy -t ntp.j2 --all` |
+| `deploy` | Deploy from templates | `netconfig.py deploy -t example_ntp.j2 --all` |
 | `rollback` | Restore previous configs | `netconfig.py rollback --device spine1 --latest` |
 | `list` | List devices/backups/templates | `netconfig.py list --devices` |
 | `validate` | Validate inventory/templates | `netconfig.py validate --inventory` |
@@ -602,13 +602,14 @@ python3 netconfig.py backup --device spine1 --verbose
 ### Template Issues
 ```bash
 # Validate template syntax
-python3 netconfig.py validate --template mytemplate.j2
+python3 netconfig.py validate --template example_ntp.j2
 
 # List available templates
 python3 netconfig.py list --templates
 
 # Test with dry-run
-python3 netconfig.py deploy -t mytemplate.j2 --device test --dry-run
+python3 netconfig.py deploy -t example_ntp.j2 --device leaf1 \
+  --vars '{"ntp_server": "10.0.0.1"}' --dry-run
 ```
 
 ### Backup/Rollback Issues

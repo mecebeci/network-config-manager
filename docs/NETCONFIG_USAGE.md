@@ -82,7 +82,7 @@ netconfig deploy --template TEMPLATE [options]
 ```
 
 **Required:**
-- `--template, -t NAME`   Template file name (e.g., ntp_config.j2)
+- `--template, -t NAME`   Template file name (e.g., example_ntp.j2)
 
 **Device Selection:**
 - `--device, -d NAME`     Deploy to specific device(s) (can be repeated)
@@ -99,22 +99,22 @@ netconfig deploy --template TEMPLATE [options]
 **Examples:**
 ```bash
 # Deploy to all devices with inline variables
-netconfig deploy -t ntp_config.j2 --all --vars '{"ntp_server": "10.0.0.1"}'
+netconfig deploy -t example_ntp.j2 --all --vars '{"ntp_server": "10.0.0.1"}'
 
 # Deploy with variables from file
-netconfig deploy -t ntp_config.j2 --device spine1 --vars @vars.json
+netconfig deploy -t example_ntp.j2 --device spine1 --vars @vars.json
 
 # Preview deployment (dry-run)
-netconfig deploy -t ntp_config.j2 --device spine1 --vars '{"server": "10.0.0.1"}' --dry-run
+netconfig deploy -t example_ntp.j2 --device spine1 --vars '{"ntp_server": "10.0.0.1"}' --dry-run
 
 # Deploy to spine devices without confirmation
-netconfig deploy -t snmp_config.j2 --role spine --vars '{"community": "public"}' --yes
+netconfig deploy -t example_snmp.j2 --role spine --vars '{"snmp_community": "public"}' --yes
 
 # Deploy without pre-deployment backup (not recommended)
-netconfig deploy -t config.j2 --device leaf1 --vars @vars.json --no-backup
+netconfig deploy -t example_ntp.j2 --device leaf1 --vars @vars.json --no-backup
 
 # Parallel deployment to all devices
-netconfig deploy -t ntp.j2 --all --vars '{"server": "10.0.0.1"}' --parallel
+netconfig deploy -t example_ntp.j2 --all --vars '{"ntp_server": "10.0.0.1"}' --parallel
 ```
 
 **Variables File Format (JSON):**
@@ -240,7 +240,7 @@ netconfig validate [--inventory | --template NAME | --templates | --backup FILE]
 netconfig validate --inventory
 
 # Validate specific template
-netconfig validate --template ntp_config.j2
+netconfig validate --template example_ntp.j2
 
 # Validate all templates
 netconfig validate --templates
@@ -272,10 +272,10 @@ netconfig list --templates
 netconfig backup --all
 
 # 2. Preview deployment (dry-run)
-netconfig deploy -t ntp.j2 --all --vars '{"server": "10.0.0.1"}' --dry-run
+netconfig deploy -t example_ntp.j2 --all --vars '{"ntp_server": "10.0.0.1"}' --dry-run
 
 # 3. Deploy with automatic backup
-netconfig deploy -t ntp.j2 --all --vars '{"server": "10.0.0.1"}'
+netconfig deploy -t example_ntp.j2 --all --vars '{"ntp_server": "10.0.0.1"}'
 
 # 4. Verify deployment success
 # (check output and logs)
@@ -287,16 +287,16 @@ netconfig rollback --all --latest
 ### Testing Templates
 ```bash
 # 1. Validate template syntax
-netconfig validate --template new_config.j2
+netconfig validate --template example_ntp.j2
 
 # 2. Test on single device (dry-run)
-netconfig deploy -t new_config.j2 --device spine1 --vars @test_vars.json --dry-run
+netconfig deploy -t example_ntp.j2 --device spine1 --vars @test_vars.json --dry-run
 
 # 3. Deploy to single device
-netconfig deploy -t new_config.j2 --device spine1 --vars @test_vars.json
+netconfig deploy -t example_ntp.j2 --device spine1 --vars @test_vars.json
 
 # 4. If successful, deploy to all
-netconfig deploy -t new_config.j2 --all --vars @test_vars.json
+netconfig deploy -t example_ntp.j2 --all --vars @test_vars.json
 ```
 
 ### Rollback Workflow
@@ -320,7 +320,7 @@ netconfig rollback --device spine1 --latest
 netconfig backup --all --parallel
 
 # Deploy configuration to all spine switches
-netconfig deploy -t spine_config.j2 --role spine --vars @spine_vars.json --parallel
+netconfig deploy -t example_ntp.j2 --role spine --vars @spine_vars.json --parallel
 
 # Rollback all leaf switches to latest backup
 netconfig rollback --role leaf --latest --parallel
@@ -370,13 +370,13 @@ ping <device_ip>
 ### Template Errors
 ```bash
 # Validate template syntax
-netconfig validate --template mytemplate.j2
+netconfig validate --template example_ntp.j2
 
 # List available templates
 netconfig list --templates
 
 # Use dry-run to test
-netconfig deploy -t mytemplate.j2 --device test --vars '{}' --dry-run
+netconfig deploy -t example_ntp.j2 --device leaf1 --vars '{"ntp_server": "10.0.0.1"}' --dry-run
 ```
 
 ### Backup/Rollback Issues
