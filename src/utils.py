@@ -7,6 +7,39 @@ from typing import Optional, List, Iterator, Any
 from tabulate import tabulate
 
 
+def split_config_commands(config_text: str) -> tuple:
+    """
+    Split saved config text into single-line commands for line-by-line sending.
+
+    Drops blank lines and '#' comment lines. Statements whose quoted value spans
+    several lines (login banner, TLS certificate/key) cannot be sent one line at
+    a time, so they are skipped and counted.
+
+    Returns:
+        (commands, skipped_count)
+    """
+    commands = []
+    skipped = 0
+    pending = []
+
+    for raw in config_text.splitlines():
+        line = raw.strip()
+        if pending:
+            pending.append(line)
+            if line.count('"') % 2 == 1:
+                pending = []
+            continue
+        if not line or line.startswith('#'):
+            continue
+        if line.count('"') % 2 == 1:
+            pending = [line]
+            skipped += 1
+            continue
+        commands.append(line)
+
+    return commands, skipped
+
+
 # ============================================================================
 # A. LOGGING UTILITIES
 # ============================================================================

@@ -13,6 +13,7 @@ from .utils import (
     get_timestamp,
     get_human_timestamp,
     safe_read_file,
+    split_config_commands,
     ensure_directory,
     create_progress_bar,
 )
@@ -796,8 +797,14 @@ class ConfigRollback:
                         # For SR Linux, use "enter candidate" mode
                         # This is a simplified approach - production systems may need more sophisticated handling
                         self.logger.debug("Applying configuration to SR Linux device")
+                        commands, skipped = split_config_commands(clean_config)
+                        if skipped:
+                            self.logger.warning(
+                                f"Skipped {skipped} multi-line statement(s) "
+                                f"(banner/certificates) for '{device_name}'"
+                            )
                         output = conn.send_config(
-                            clean_config.splitlines(),
+                            commands,
                             error_pattern=CONFIG_ERROR_PATTERN
                         )
                         output += conn.commit()

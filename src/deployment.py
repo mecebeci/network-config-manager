@@ -15,6 +15,7 @@ from .utils import (
     get_human_timestamp,
     safe_write_file,
     safe_read_file,
+    split_config_commands,
     ensure_directory,
     create_progress_bar,
     print_separator,
@@ -737,11 +738,12 @@ END PREVIEW
                 return False
 
             # Remove header comments from backup
-            config_lines = [
-                line.strip()
-                for line in backup_content.split('\n')
-                if line.strip() and not line.strip().startswith('#')
-            ]
+            config_lines, skipped = split_config_commands(backup_content)
+            if skipped:
+                self.logger.warning(
+                    f"Skipped {skipped} multi-line statement(s) "
+                    f"(banner/certificates) for '{device_name}'"
+                )
 
             if not config_lines:
                 self.logger.error(
