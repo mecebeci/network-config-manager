@@ -548,6 +548,8 @@ pytest && git commit -m "Your message"
 - **inventory_loader.py** - YAML-based device inventory
 - **template_engine.py** - Jinja2 template rendering
 
+Component and deploy-flow diagrams: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
 ## Safety Features
 
 ### Built-in Safeguards
