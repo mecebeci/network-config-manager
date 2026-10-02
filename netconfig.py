@@ -922,6 +922,17 @@ def handle_rollback(args: argparse.Namespace) -> int:
 
                 if valid:
                     print_success(f"{device_name:<15} would be rolled back to {backup_file}")
+                    try:
+                        deletes = rollback_mgr.preview_rollback_deletes(device, backup_path)
+                    except Exception as e:
+                        print_error(f"{device_name:<15} could not read running config: {e}")
+                    else:
+                        if deletes:
+                            print_info(f"{device_name:<15} config not in backup, would be deleted:")
+                            for command in deletes:
+                                print(f"      - {command}")
+                        else:
+                            print_info(f"{device_name:<15} nothing to delete")
                     results.append({
                         'success': True,
                         'device_name': device_name,

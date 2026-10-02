@@ -8,6 +8,16 @@ BACKUP_DIR="$(pwd)/configs/backups"
 # Build docker run arguments
 DOCKER_ARGS="--rm"
 
+# Use the host's timezone so backup filenames sort with ones made outside Docker
+if [ -e /etc/localtime ]; then
+    DOCKER_ARGS="$DOCKER_ARGS -v /etc/localtime:/etc/localtime:ro"
+fi
+
+# Attach stdin/tty when interactive so confirmation prompts work
+if [ -t 0 ]; then
+    DOCKER_ARGS="$DOCKER_ARGS -it"
+fi
+
 # Attach to lab network if it exists
 if docker network inspect "$DOCKER_NETWORK" &>/dev/null; then
     DOCKER_ARGS="$DOCKER_ARGS --network $DOCKER_NETWORK"

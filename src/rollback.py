@@ -14,6 +14,7 @@ from .utils import (
     get_human_timestamp,
     safe_read_file,
     split_config_commands,
+    config_delete_commands,
     ensure_directory,
     create_progress_bar,
 )
@@ -712,6 +713,7 @@ class ConfigRollback:
             'device_name': device_name,
             'backup_file_used': backup_filepath,
             'safety_backup_created': None,
+            'deleted_paths': [],
             'timestamp': get_human_timestamp(),
             'error': None
         }
@@ -803,6 +805,13 @@ class ConfigRollback:
                                 f"Skipped {skipped} multi-line statement(s) "
                                 f"(banner/certificates) for '{device_name}'"
                             )
+                        # Replaying set commands cannot remove config added
+                        # since the backup, so delete it first (same commit)
+                        deletes = self._get_delete_commands(
+                            conn, device_config, backup_config
+                        )
+                        result['deleted_paths'] = deletes
+                        commands = deletes + commands
                         output = conn.send_config(
                             commands,
                             error_pattern=CONFIG_ERROR_PATTERN
@@ -840,6 +849,49 @@ class ConfigRollback:
             self.logger.error(f"Rollback failed for '{device_name}': {result.get('error', 'unknown')}")
 
         return result
+
+    def _get_delete_commands(
+        self,
+        conn: ConnectionManager,
+        device_config: Dict[str, Any],
+        backup_config: str
+    ) -> List[str]:
+        """Read the running config and compute deletes needed to match the backup."""
+        device_name = device_config.get('name', 'unknown')
+        current_config = self.backup_manager._get_device_config(conn, device_config)
+        deletes, withheld = config_delete_commands(current_config, backup_config)
+
+        for command in withheld:
+            self.logger.warning(
+                f"Not deleting multi-line statement on '{device_name}': {command}"
+            )
+        if deletes:
+            self.logger.info(
+                f"Found {len(deletes)} path(s) not in backup on '{device_name}'"
+            )
+        return deletes
+
+    def preview_rollback_deletes(
+        self,
+        device: Dict[str, Any],
+        backup_filepath: str
+    ) -> List[str]:
+        """
+        Connect read-only and return the delete commands a rollback would send.
+
+        Raises:
+            Connection errors from ConnectionManager if the device is unreachable
+        """
+        backup_config = safe_read_file(backup_filepath)
+        if backup_config is None:
+            raise FileNotFoundError(f"Cannot read backup file: {backup_filepath}")
+
+        device_config = self.backup_manager._merge_device_settings(device)
+        if device_config.get('device_type', 'nokia_sros') not in ['nokia_sros', 'sr_linux', 'nokia_srl']:
+            return []  # Deletes are only computed for SR Linux
+
+        with ConnectionManager(device_config) as conn:
+            return self._get_delete_commands(conn, device_config, backup_config)
 
     def rollback_multiple_devices(
         self,
@@ -1071,6 +1123,8 @@ class ConfigRollback:
                     safety_file = os.path.basename(r['safety_backup_created'])
                     line += f" (safety: {safety_file})"
                 report_lines.append(line)
+                for command in r.get('deleted_paths', []):
+                    report_lines.append(f"      - {command}")
             report_lines.append("")
 
         # List failed rollbacks

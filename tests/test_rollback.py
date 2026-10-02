@@ -71,6 +71,41 @@ class TestConfigRollback:
         assert result['device_name'] == 'test_device1'
 
     @patch('src.rollback.ConnectionManager')
+    def test_rollback_deletes_config_added_since_backup(self, mock_conn_mgr_class, mock_device, temp_dir, test_inventory_file):
+        """Config present on the device but absent from the backup is deleted before replay."""
+        backup_config = (
+            "set / interface ethernet-1/1 description to_leaf1\n"
+            "set / interface ethernet-1/1 admin-state enable\n"
+            "set / system name host-name test_device1\n"
+        )
+        backup_path = os.path.join(temp_dir, "test_device1_20250203_120000.cfg")
+        with open(backup_path, 'w') as f:
+            f.write("# Configuration Backup\n\n" + backup_config)
+
+        mock_conn_mgr = MagicMock()
+        mock_conn_mgr.__enter__.return_value = mock_conn_mgr
+        mock_conn_mgr.__exit__.return_value = None
+        mock_conn_mgr.send_command.return_value = (
+            backup_config + "set / system ntp server 10.0.0.1 iburst true\n"
+        )
+        mock_conn_mgr.send_config.return_value = ""
+        mock_conn_mgr.commit.return_value = ""
+        mock_conn_mgr_class.return_value = mock_conn_mgr
+
+        rollback_mgr = ConfigRollback(
+            inventory_path=test_inventory_file,
+            backup_dir=temp_dir
+        )
+        result = rollback_mgr.rollback_device(mock_device, backup_path, safety_backup=False)
+
+        assert result['success'] is True
+        assert result['deleted_paths'] == ['delete / system ntp']
+        sent = mock_conn_mgr.send_config.call_args[0][0]
+        assert sent[0] == 'delete / system ntp'
+        assert sent[1:] == backup_config.splitlines()
+        mock_conn_mgr.commit.assert_called_once()
+
+    @patch('src.rollback.ConnectionManager')
     def test_rollback_connection_failure(self, mock_conn_mgr_class, mock_device, test_backup_file, temp_dir, test_inventory_file):
         """Test rollback with connection failure."""
         # Mock connection failure

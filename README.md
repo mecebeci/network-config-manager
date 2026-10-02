@@ -30,6 +30,7 @@ A comprehensive Python-based solution for automating multi-device network config
 
 ### 4. Configuration Rollback
 - **Restore from any backup** - Complete configuration history
+- **Exact restore** - Config added since the backup is deleted in the same commit (dry-run lists the deletes)
 - **Multiple selection methods** - Latest, specific file, or timestamp
 - **Safety backup** - Current config saved before rollback
 - **Dry-run preview** - Test rollback without applying

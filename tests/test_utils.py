@@ -13,7 +13,8 @@ from src.utils import (
     print_separator,
     print_success,
     print_error,
-    print_info
+    print_info,
+    config_delete_commands,
 )
 
 
@@ -165,3 +166,72 @@ class TestFormattingUtilities:
         print_info("Test info message")
         captured = capsys.readouterr()
         assert "Test info message" in captured.out
+
+
+@pytest.mark.unit
+class TestConfigDeleteCommands:
+    """Tests for computing rollback delete commands."""
+
+    BASE = (
+        "set / interface ethernet-1/1 description to_leaf1\n"
+        "set / interface ethernet-1/1 admin-state enable\n"
+        "set / system name host-name spine1\n"
+    )
+
+    def test_identical_configs_need_no_deletes(self):
+        assert config_delete_commands(self.BASE, self.BASE) == ([], [])
+
+    def test_added_container_deleted_at_shortest_path(self):
+        current = self.BASE + (
+            "set / system ntp admin-state enable\n"
+            "set / system ntp server 10.0.0.1 iburst true\n"
+        )
+        assert config_delete_commands(current, self.BASE) == (['delete / system ntp'], [])
+
+    def test_extra_list_entry_deleted_by_key(self):
+        target = self.BASE + "set / system ntp server 10.0.0.1 iburst true\n"
+        current = target + "set / system ntp server 10.0.0.2 iburst true\n"
+        assert config_delete_commands(current, target) == (
+            ['delete / system ntp server 10.0.0.2'], []
+        )
+
+    def test_changed_leaf_value_deletes_leaf(self):
+        current = self.BASE.replace('to_leaf1', '"changed by deploy"')
+        assert config_delete_commands(current, self.BASE) == (
+            ['delete / interface ethernet-1/1 description'], []
+        )
+
+    def test_changed_leaf_list_deletes_leaf(self):
+        target = self.BASE + "set / system grpc-server mgmt services [ gnmi ]\n"
+        current = self.BASE + "set / system grpc-server mgmt services [ gnmi gnoi ]\n"
+        assert config_delete_commands(current, target) == (
+            ['delete / system grpc-server mgmt services'], []
+        )
+
+    def test_removed_config_needs_no_delete(self):
+        current = "set / system name host-name spine1\n"
+        assert config_delete_commands(current, self.BASE) == ([], [])
+
+    def test_ignores_header_comments(self):
+        target = "# Configuration Backup\n# Device: spine1\n\n" + self.BASE
+        assert config_delete_commands(self.BASE, target) == ([], [])
+
+    def test_delete_next_to_multiline_statement_stays_narrow(self):
+        target = self.BASE + (
+            'set / system banner login-banner "line one\n'
+            'line two"\n'
+        )
+        current = target + "set / system banner motd-banner hello\n"
+        assert config_delete_commands(current, target) == (
+            ['delete / system banner motd-banner'], []
+        )
+
+    def test_withholds_delete_covering_multiline_statement(self):
+        current = self.BASE + (
+            "set / system tls server-profile lab cipher-list [ aes ]\n"
+            'set / system tls server-profile lab key "-----BEGIN KEY-----\n'
+            '-----END KEY-----"\n'
+        )
+        assert config_delete_commands(current, self.BASE) == (
+            [], ['delete / system tls']
+        )

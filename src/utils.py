@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -38,6 +39,109 @@ def split_config_commands(config_text: str) -> tuple:
         commands.append(line)
 
     return commands, skipped
+
+
+# A token is a quoted string, a bracketed leaf-list value, or a bare word
+_CONFIG_TOKEN_RE = re.compile(r'"(?:[^"\\]|\\.)*"|\[[^\]]*\]|\S+')
+
+
+def _set_path_tokens(line: str) -> Optional[tuple]:
+    """Tokenize the part after 'set / ' of a flat SR Linux config line."""
+    if not line.startswith('set / '):
+        return None
+    return tuple(_CONFIG_TOKEN_RE.findall(line[len('set / '):]))
+
+
+def _multiline_statement_paths(config_text: str) -> List[tuple]:
+    """Paths of statements skipped by split_config_commands (banner, TLS keys)."""
+    paths = []
+    in_statement = False
+    for raw in config_text.splitlines():
+        line = raw.strip()
+        if in_statement:
+            if line.count('"') % 2 == 1:
+                in_statement = False
+            continue
+        if line.count('"') % 2 == 1:
+            in_statement = True
+            tokens = _set_path_tokens(line) or ()
+            path = []
+            for token in tokens:
+                if token.startswith('"'):
+                    break
+                path.append(token)
+            if path:
+                paths.append(tuple(path))
+    return paths
+
+
+def config_delete_commands(current_config: str, target_config: str) -> tuple:
+    """
+    Compute the 'delete' commands that turn current_config into target_config.
+
+    Both inputs are flat SR Linux configs ('set / ...' lines, as 'info flat'
+    prints them). Replaying target_config's set commands only adds or
+    overwrites, so anything present on the device but absent from the target
+    must be deleted first. Each extra line is deleted at the shortest path the
+    target does not share; if only the last token differs (a changed leaf
+    value), the leaf itself is deleted. Sending the deletes and then the full
+    target set commands in one commit yields exactly the target config.
+
+    Deletes that would remove a multi-line statement (banner, TLS key) are
+    withheld, because those statements cannot be replayed from the target.
+
+    Returns:
+        (delete_commands, withheld_commands)
+    """
+    target_commands, _ = split_config_commands(target_config)
+    current_commands, _ = split_config_commands(current_config)
+    target_multiline = _multiline_statement_paths(target_config)
+
+    target_lines = set()
+    target_prefixes = set()
+    for command in target_commands:
+        tokens = _set_path_tokens(command)
+        if tokens is None:
+            continue
+        target_lines.add(tokens)
+        for i in range(1, len(tokens) + 1):
+            target_prefixes.add(tokens[:i])
+    for path in target_multiline:
+        for i in range(1, len(path) + 1):
+            target_prefixes.add(path[:i])
+
+    candidates = []
+    for command in current_commands:
+        tokens = _set_path_tokens(command)
+        if tokens is None or tokens in target_lines:
+            continue
+        diverge = next(
+            (i for i in range(1, len(tokens) + 1) if tokens[:i] not in target_prefixes),
+            None
+        )
+        if diverge is None:
+            continue  # Current line is a prefix of a target line
+        path = tokens[:diverge] if diverge < len(tokens) else tokens[:-1]
+        if path and path not in candidates:
+            candidates.append(path)
+
+    # Drop paths already covered by deleting one of their ancestors
+    paths = [
+        path for path in candidates
+        if not any(other != path and path[:len(other)] == other for other in candidates)
+    ]
+
+    protected = _multiline_statement_paths(current_config) + target_multiline
+    deletes = []
+    withheld = []
+    for path in paths:
+        command = 'delete / ' + ' '.join(path)
+        if any(p[:len(path)] == path for p in protected):
+            withheld.append(command)
+        else:
+            deletes.append(command)
+
+    return deletes, withheld
 
 
 # ============================================================================
@@ -101,6 +205,9 @@ def setup_logging(
     console_handler.setLevel(getattr(logging, log_level.upper(), logging.INFO))
     console_handler.setFormatter(simple_formatter)
     logger.addHandler(console_handler)
+
+    # Paramiko logs every SSH handshake at INFO, including the device login banner
+    logging.getLogger("paramiko").setLevel(logging.WARNING)
 
     logger.info(f"Logging initialized - Level: {log_level}, File: {log_file}")
 
