@@ -170,7 +170,7 @@ class ConfigBackup:
 
         try:
             # SR Linux (Nokia SROS) configuration commands
-            if device_type in ['nokia_sros', 'sr_linux']:
+            if device_type in ['nokia_sros', 'sr_linux', 'nokia_srl']:
                 # Try "info flat" command for SR Linux
                 self.logger.debug(f"Using 'info flat' command for {device_name}")
                 config = conn_mgr.send_command("info flat")
@@ -546,6 +546,11 @@ class ConfigBackup:
         # Check minimum size (should be at least 100 bytes for a valid config)
         if len(content) < 100:
             self.logger.warning(f"Backup file too small: {filepath} ({len(content)} bytes)")
+            return False
+
+        # Device CLI errors are saved as backup content when a wrong command is used
+        if "Parsing error" in content:
+            self.logger.warning(f"Backup contains a device CLI error, not a config: {filepath}")
             return False
 
         # Optional: Check for expected markers

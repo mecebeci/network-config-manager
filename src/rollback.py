@@ -792,7 +792,7 @@ class ConfigRollback:
 
                 try:
                     # Apply configuration
-                    if device_type in ['nokia_sros', 'sr_linux']:
+                    if device_type in ['nokia_sros', 'sr_linux', 'nokia_srl']:
                         # For SR Linux, use "enter candidate" mode
                         # This is a simplified approach - production systems may need more sophisticated handling
                         self.logger.debug("Applying configuration to SR Linux device")
