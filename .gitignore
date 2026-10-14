@@ -80,3 +80,7 @@ coverage.xml
 # Unit Test / Pytest
 .pytest_cache/
 .tox/
+
+# Claude Code working files
+CLAUDE.md
+docs/WEB_PLAN.md
