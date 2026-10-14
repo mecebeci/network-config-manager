@@ -16,7 +16,7 @@ topology:
       kind: nokia_srlinux
       mgmt-ipv4: 172.21.20.11
       memory: 1g
-      startup-config: ../configs/spine1.cfg
+      startup-config: startup/spine1.cfg
       labels:
         role: spine
         tier: core
@@ -25,7 +25,7 @@ topology:
       kind: nokia_srlinux
       mgmt-ipv4: 172.21.20.12
       memory: 1g
-      startup-config: ../configs/spine2.cfg
+      startup-config: startup/spine2.cfg
       labels:
         role: spine
         tier: core
@@ -35,7 +35,7 @@ topology:
       kind: nokia_srlinux
       mgmt-ipv4: 172.21.20.13
       memory: 1g
-      startup-config: ../configs/leaf1.cfg
+      startup-config: startup/leaf1.cfg
       labels:
         role: leaf
         tier: access
@@ -44,7 +44,7 @@ topology:
       kind: nokia_srlinux
       mgmt-ipv4: 172.21.20.14
       memory: 1g
-      startup-config: ../configs/leaf2.cfg
+      startup-config: startup/leaf2.cfg
       labels:
         role: leaf
         tier: access

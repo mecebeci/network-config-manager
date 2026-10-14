@@ -43,16 +43,6 @@ logs/
 data/
 db.sqlite3
 
-# Configuration Backups
-configs/backups/*.cfg
-configs/backups/*.txt
-configs/backups/*.conf
-
-# Reports
-reports/*.png
-reports/*.json
-reports/*.html
-
 # OS Files
 .DS_Store
 .DS_Store?
