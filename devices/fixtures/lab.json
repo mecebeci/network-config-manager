@@ -1,0 +1,42 @@
+[
+  {
+    "model": "devices.device",
+    "pk": 1,
+    "fields": {
+      "name": "spine1",
+      "ip": "172.21.20.11",
+      "role": "spine",
+      "description": "Spine switch 1 - Core layer"
+    }
+  },
+  {
+    "model": "devices.device",
+    "pk": 2,
+    "fields": {
+      "name": "spine2",
+      "ip": "172.21.20.12",
+      "role": "spine",
+      "description": "Spine switch 2 - Core layer"
+    }
+  },
+  {
+    "model": "devices.device",
+    "pk": 3,
+    "fields": {
+      "name": "leaf1",
+      "ip": "172.21.20.13",
+      "role": "leaf",
+      "description": "Leaf switch 1 - Access layer"
+    }
+  },
+  {
+    "model": "devices.device",
+    "pk": 4,
+    "fields": {
+      "name": "leaf2",
+      "ip": "172.21.20.14",
+      "role": "leaf",
+      "description": "Leaf switch 2 - Access layer"
+    }
+  }
+]
