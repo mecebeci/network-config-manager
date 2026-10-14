@@ -77,7 +77,7 @@ class ConnectionManager:
             bool: True if connection successful
         """
         device_info = {
-            "device_type": self.device.get("device_type", "nokia_sros"),
+            "device_type": self.device.get("device_type", "nokia_srl"),
             "host": self.device["ip"],
             "username": self.device["username"],
             "password": self.device["password"],
