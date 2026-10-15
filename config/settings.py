@@ -139,3 +139,9 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+
+# SR Linux devices (same credentials for all; kept out of the database)
+
+DEVICE_USERNAME = os.environ['DEVICE_USERNAME']
+DEVICE_PASSWORD = os.environ['DEVICE_PASSWORD']
