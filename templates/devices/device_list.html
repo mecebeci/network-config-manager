@@ -21,6 +21,7 @@
       <th>IP</th>
       <th>Role</th>
       <th>Description</th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -30,10 +31,11 @@
       <td>{{ device.ip }}</td>
       <td>{{ device.get_role_display }}</td>
       <td>{{ device.description }}</td>
+      <td><a href="{% url 'device_backups' device.id %}">Backups</a></td>
     </tr>
     {% empty %}
     <tr>
-      <td colspan="4">No devices. Add them in the admin or run <code>python manage.py loaddata lab</code>.</td>
+      <td colspan="5">No devices. Add them in the admin or run <code>python manage.py loaddata lab</code>.</td>
     </tr>
     {% endfor %}
   </tbody>

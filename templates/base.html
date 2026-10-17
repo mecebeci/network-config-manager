@@ -21,6 +21,7 @@
       {% if user.is_authenticated %}
       <ul>
         <li><a href="{% url 'home' %}">Devices</a></li>
+        <li><a href="{% url 'backup' %}">Backup</a></li>
         <li>
           <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}

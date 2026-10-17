@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Backup · {{ block.super }}{% endblock %}
+
+{% block content %}
+<h2>Backup</h2>
+
+<nav>
+  <ul>
+    <li>Select:</li>
+    <li><a href="?select=all">All</a></li>
+    {% for value, label in roles %}
+    <li><a href="?select={{ value }}">{{ label }}</a></li>
+    {% endfor %}
+    <li><a href="{% url 'backup' %}">None</a></li>
+  </ul>
+</nav>
+
+<form hx-post="{% url 'backup_run' %}"
+      hx-target="#results"
+      hx-indicator="#spinner"
+      hx-disabled-elt="find button">
+  <fieldset>
+    {{ form.devices }}
+  </fieldset>
+  <button type="submit">Take backup</button>
+  <span id="spinner" class="htmx-indicator" aria-busy="true">Connecting to devices…</span>
+</form>
+
+<div id="results"></div>
+{% endblock %}
