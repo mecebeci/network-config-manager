@@ -29,3 +29,14 @@ def fake_fetch(device):
 def ssh():
     with patch('operations.services.fetch_config', side_effect=fake_fetch) as fetch:
         yield fetch
+
+
+def fake_push(device, lines):
+    """Stands in for push_config: leaf2 is unreachable, others return their old config."""
+    return fake_fetch(device)
+
+
+@pytest.fixture
+def push():
+    with patch('operations.services.push_config', side_effect=fake_push) as push:
+        yield push

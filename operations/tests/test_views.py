@@ -1,9 +1,11 @@
 import pytest
-from pytest_django.asserts import assertContains, assertRedirects
+from django.core import signing
+from pytest_django.asserts import assertContains, assertNotContains, assertRedirects
 
 from operations.models import Backup
+from operations.views import DEPLOY_SALT
 
-# lab_devices, user and ssh fixtures come from conftest.py
+# lab_devices, user, ssh and push fixtures come from conftest.py
 
 
 @pytest.fixture
@@ -75,3 +77,76 @@ def test_download_returns_config_as_attachment(user_client, backup):
 
 def test_unknown_backup_is_404(user_client, db):
     assert user_client.get('/backups/999/').status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Deploy
+# ---------------------------------------------------------------------------
+
+NTP = {'template': 'example_ntp.j2', 'var_ntp_server': '10.0.0.1'}
+
+
+@pytest.mark.parametrize('url', ['/deploy/', '/deploy/form/'])
+def test_deploy_pages_require_login(client, db, url):
+    response = client.get(url)
+    assertRedirects(response, f'/login/?next={url}', fetch_redirect_response=False)
+
+
+def test_deploy_form_shows_template_variables(user_client, db):
+    response = user_client.get('/deploy/form/?template=example_ntp.j2')
+    assertContains(response, 'name="var_ntp_server"')
+
+
+def preview(user_client, lab_devices, **data):
+    spine1 = lab_devices.get(name='spine1')
+    return user_client.post('/deploy/preview/', {'devices': [spine1.pk], **NTP, **data})
+
+
+def test_preview_shows_config_and_touches_no_device(user_client, lab_devices, push):
+    response = preview(user_client, lab_devices)
+    assertContains(response, 'set / system ntp server 10.0.0.1 prefer true')
+    assertContains(response, 'name="plan"')
+    push.assert_not_called()
+
+
+def test_preview_missing_variable_shows_error_without_plan(user_client, lab_devices, push):
+    response = preview(user_client, lab_devices, var_ntp_server='')
+    assertContains(response, 'is undefined')
+    assertNotContains(response, 'name="plan"')
+
+
+def test_apply_runs_the_previewed_plan(user_client, lab_devices, push):
+    plan = preview(user_client, lab_devices).context['plan']
+    response = user_client.post('/deploy/apply/', {'plan': plan})
+
+    assertContains(response, 'Committed')
+    device, lines = push.call_args.args
+    assert device.name == 'spine1'
+    assert 'set / system ntp server 10.0.0.1 prefer true' in lines
+    assert Backup.objects.get().reason == 'pre-deploy'
+
+
+def test_apply_rejects_changed_plan(user_client, lab_devices, push):
+    plan = preview(user_client, lab_devices).context['plan']
+    # Keep the signature, swap the content for another NTP server
+    signature = plan.rsplit(':', 1)[1]
+    evil = signing.dumps({**signing.loads(plan, salt=DEPLOY_SALT),
+                          'variables': {'ntp_server': '6.6.6.6'}}, salt=DEPLOY_SALT)
+    forged = evil.rsplit(':', 1)[0] + ':' + signature
+
+    response = user_client.post('/deploy/apply/', {'plan': forged})
+    assert response.status_code == 400
+    push.assert_not_called()
+
+
+@pytest.mark.parametrize('plan', ['', 'not-a-plan'])
+def test_apply_rejects_missing_or_garbage_plan(user_client, db, push, plan):
+    assert user_client.post('/deploy/apply/', {'plan': plan}).status_code == 400
+    push.assert_not_called()
+
+
+def test_apply_rejects_plan_signed_for_something_else(user_client, lab_devices, push):
+    plan = signing.dumps({'devices': [1], 'template': 'example_ntp.j2', 'variables': {}},
+                         salt='other.purpose')
+    assert user_client.post('/deploy/apply/', {'plan': plan}).status_code == 400
+    push.assert_not_called()
