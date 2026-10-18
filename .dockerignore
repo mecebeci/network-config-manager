@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+data/
+staticfiles/
+lab/
+**/__pycache__
+.pytest_cache
+CLAUDE.md
+docs/
