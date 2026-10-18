@@ -132,16 +132,6 @@ LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
 
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
-
-
 # SR Linux devices (same credentials for all; kept out of the database)
 
 DEVICE_USERNAME = os.environ['DEVICE_USERNAME']

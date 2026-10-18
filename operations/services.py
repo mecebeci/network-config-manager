@@ -6,6 +6,7 @@ from network import rendering
 from network.configdiff import config_delete_commands, needed_set_commands, split_config_commands
 from network.ssh import DeviceConnection, DeviceError
 
+from .locks import device_lock
 from .models import Backup
 
 
@@ -83,7 +84,8 @@ def push_config(device, lines):
 
     On any error the candidate is discarded, so the device stays unchanged.
     """
-    with connect(device) as conn:
+    # Locked before connecting: the candidate is shared by all sessions on the device
+    with device_lock(device), connect(device) as conn:
         # Read first: after send_config the session is in candidate mode
         before = conn.get_config()
         try:
@@ -161,7 +163,7 @@ def push_rollback(backup, previewed_send):
     On any error the candidate is discarded, so the device stays unchanged.
     """
     device = backup.device
-    with connect(device) as conn:
+    with device_lock(device), connect(device) as conn:
         # Read first: after send_config the session is in candidate mode
         before = conn.get_config()
 
