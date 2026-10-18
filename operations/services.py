@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
 
 from network import rendering
+from network.configdiff import config_delete_commands, needed_set_commands, split_config_commands
 from network.ssh import DeviceConnection, DeviceError
 
 from .models import Backup
@@ -122,3 +123,74 @@ def deploy(devices, template, variables, user):
     return results
 
 # --- end: deploy ---
+
+
+# ---------------------------------------------------------------------------
+# Rollback
+# ---------------------------------------------------------------------------
+
+def rollback_commands(running, target):
+    """What turns the running config into target, for the preview and the apply.
+
+    'send' (= 'deletes' then 'sets') goes to the device in one commit.
+    'withheld' deletes and 'skipped' multi-line statements are only shown.
+    """
+    deletes, withheld = config_delete_commands(running, target)
+    target_sets, skipped = split_config_commands(target)
+    # Lines already on the device and untouched by the deletes are not resent
+    sets = needed_set_commands(running, target_sets, deletes)
+    return {
+        'deletes': deletes,
+        'sets': sets,
+        'send': deletes + sets,
+        'withheld': withheld,
+        'skipped': skipped,
+    }
+
+
+def preview_rollback(backup):
+    """Read the device's running config and compute the rollback commands."""
+    running = fetch_config(backup.device)
+    return rollback_commands(running, backup.content)
+
+
+def push_rollback(backup, previewed_send):
+    """Restore backup on its device in one commit; returns the config from before.
+
+    Refuses if the commands differ from the preview, i.e. the device changed since.
+    On any error the candidate is discarded, so the device stays unchanged.
+    """
+    device = backup.device
+    with connect(device) as conn:
+        # Read first: after send_config the session is in candidate mode
+        before = conn.get_config()
+
+        # Recompute on the config being replaced; never send what the user did not see
+        commands = rollback_commands(before, backup.content)
+        if commands['send'] != previewed_send:
+            raise DeviceError(f'{device.ip}: config changed since the preview, preview again')
+
+        # Nothing differs: there is nothing to commit
+        if not commands['send']:
+            return before
+
+        try:
+            conn.send_config(commands['send'])
+            conn.commit()
+        except DeviceError:
+            conn.discard()
+            raise
+    return before
+
+
+def rollback(backup, previewed_send, user):
+    """Roll the device back to backup; returns the pre-rollback backup.
+
+    Raises DeviceError on failure; nothing is saved then, the device is unchanged.
+    """
+    before = push_rollback(backup, previewed_send)
+    return Backup.objects.create(
+        device=backup.device, content=before, reason=Backup.Reason.PRE_ROLLBACK, created_by=user,
+    )
+
+# --- end: rollback ---

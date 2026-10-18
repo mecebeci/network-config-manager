@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Roll back {{ backup.device.name }} · {{ block.super }}{% endblock %}
+
+{% block content %}
+<h2>Roll back {{ backup.device.name }}</h2>
+
+<p>
+  To <a href="{% url 'backup_detail' backup.id %}">{{ backup }}</a> ({{ backup.get_reason_display }}) ·
+  <a href="{% url 'device_backups' backup.device.id %}">All {{ backup.device.name }} backups</a>
+</p>
+
+{% if error %}
+<p><mark>{{ error }}</mark></p>
+{% elif not commands.send %}
+<p>The device already matches this backup, there is nothing to send.</p>
+{% else %}
+<article>
+  <header><strong>Delete</strong> <small>config added since this backup</small></header>
+  {% if commands.deletes %}
+  <pre>{% for line in commands.deletes %}{{ line }}
+{% endfor %}</pre>
+  {% else %}
+  <p>Nothing to delete.</p>
+  {% endif %}
+</article>
+
+<article>
+  <header><strong>Set</strong> <small>lines of the backup that are missing or would be deleted</small></header>
+  {% if commands.sets %}
+  <pre>{% for line in commands.sets %}{{ line }}
+{% endfor %}</pre>
+  {% else %}
+  <p>Nothing to set, the rest of the backup is already on the device.</p>
+  {% endif %}
+</article>
+
+{% if commands.withheld or commands.skipped %}
+<article>
+  <header><strong>Not changed</strong> <small>multi-line statements cannot be sent line by line</small></header>
+  {% if commands.withheld %}
+  <p>Kept on the device, not deleted:</p>
+  <pre>{% for line in commands.withheld %}{{ line }}
+{% endfor %}</pre>
+  {% endif %}
+  {% if commands.skipped %}
+  <p>Not restored from the backup:</p>
+  <pre>{% for line in commands.skipped %}{{ line }}
+
+{% endfor %}</pre>
+  {% endif %}
+</article>
+{% endif %}
+
+<form hx-post="{% url 'rollback_apply' %}"
+      hx-target="#results"
+      hx-confirm="Roll {{ backup.device.name }} back to this backup?"
+      hx-indicator="#apply-spinner"
+      hx-disabled-elt="find button">
+  <input type="hidden" name="plan" value="{{ plan }}">
+  <button type="submit">Apply</button>
+  <span id="apply-spinner" class="htmx-indicator" aria-busy="true">Rolling back…</span>
+</form>
+
+<div id="results"></div>
+{% endif %}
+{% endblock %}

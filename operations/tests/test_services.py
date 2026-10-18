@@ -5,7 +5,17 @@ import pytest
 from network.rendering import RenderError
 from network.ssh import DeviceError
 from operations.models import Backup
-from operations.services import deploy, fetch_config, push_config, take_backup, take_backups
+from operations.services import (
+    deploy,
+    fetch_config,
+    preview_rollback,
+    push_config,
+    push_rollback,
+    rollback,
+    rollback_commands,
+    take_backup,
+    take_backups,
+)
 
 # lab_devices, user, ssh and push fixtures come from conftest.py
 
@@ -107,3 +117,90 @@ def test_deploy_render_error_touches_no_device(lab_devices, user, push):
         deploy(lab_devices, 'example_ntp.j2', {'ntp_server': ''}, user)
     push.assert_not_called()
     assert not Backup.objects.exists()
+
+
+# ---------------------------------------------------------------------------
+# Rollback
+# ---------------------------------------------------------------------------
+
+# Running config after an NTP deploy, and the backup from before it
+RUNNING = (
+    'set / system name host-name spine1\n'
+    'set / system ntp admin-state enable\n'
+    'set / system ntp server 10.0.0.1\n'
+)
+TARGET = 'set / system name host-name spine1\nset / system ntp admin-state disable\n'
+NTP_DELETES = ['delete / system ntp admin-state', 'delete / system ntp server']
+# host-name is already on the device, so only the changed line is set
+SEND = NTP_DELETES + ['set / system ntp admin-state disable']
+
+
+@pytest.fixture
+def ntp_backup(lab_devices):
+    return Backup.objects.create(
+        device=lab_devices.get(name='spine1'), content=TARGET, reason=Backup.Reason.MANUAL,
+    )
+
+
+def test_rollback_commands_sends_deletes_and_only_needed_sets():
+    assert rollback_commands(RUNNING, TARGET) == {
+        'deletes': NTP_DELETES,
+        'sets': ['set / system ntp admin-state disable'],
+        'send': SEND,
+        'withheld': [],
+        'skipped': [],
+    }
+
+
+def test_preview_rollback_reads_the_backups_device(ntp_backup):
+    with patch('operations.services.fetch_config', return_value=RUNNING) as fetch:
+        assert preview_rollback(ntp_backup)['send'] == SEND
+    fetch.assert_called_once_with(ntp_backup.device)
+
+
+def test_push_rollback_sends_previewed_commands_in_one_commit(ntp_backup, conn):
+    conn.get_config.return_value = RUNNING
+    assert push_rollback(ntp_backup, SEND) == RUNNING
+    assert conn.method_calls == [call.get_config(), call.send_config(SEND), call.commit()]
+
+
+def test_push_rollback_refuses_if_device_changed_since_preview(ntp_backup, conn):
+    conn.get_config.return_value = RUNNING
+    # The preview was made before 'ntp server' was added
+    with pytest.raises(DeviceError, match='config changed since the preview'):
+        push_rollback(ntp_backup, SEND[1:])
+    conn.send_config.assert_not_called()
+    conn.commit.assert_not_called()
+
+
+def test_push_rollback_with_nothing_to_send_does_not_commit(ntp_backup, conn):
+    conn.get_config.return_value = TARGET
+    assert push_rollback(ntp_backup, []) == TARGET
+    conn.send_config.assert_not_called()
+    conn.commit.assert_not_called()
+
+
+@pytest.mark.parametrize('failing_step', ['send_config', 'commit'])
+def test_push_rollback_discards_on_error(ntp_backup, conn, failing_step):
+    conn.get_config.return_value = RUNNING
+    getattr(conn, failing_step).side_effect = DeviceError('rejected')
+    with pytest.raises(DeviceError, match='rejected'):
+        push_rollback(ntp_backup, SEND)
+    conn.discard.assert_called_once()
+
+
+def test_rollback_saves_pre_rollback_backup(ntp_backup, user):
+    with patch('operations.services.push_rollback', return_value=RUNNING):
+        before = rollback(ntp_backup, SEND, user)
+    before.refresh_from_db()
+    assert before.device == ntp_backup.device
+    assert before.content == RUNNING
+    assert before.reason == 'pre-rollback'
+    assert before.created_by == user
+
+
+def test_rollback_failure_saves_nothing(ntp_backup, user):
+    with patch('operations.services.push_rollback', side_effect=DeviceError('rejected')):
+        with pytest.raises(DeviceError):
+            rollback(ntp_backup, SEND, user)
+    assert list(Backup.objects.all()) == [ntp_backup]

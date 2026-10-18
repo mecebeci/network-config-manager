@@ -6,10 +6,12 @@ from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_POST
 
 from devices.models import Device
+from network.configdiff import unified_diff
 from network.rendering import RenderError
+from network.ssh import DeviceError
 
 from . import services
-from .forms import BackupForm, DeployForm
+from .forms import BackupForm, CompareForm, DeployForm
 from .models import Backup
 
 
@@ -73,6 +75,20 @@ def backup_download(request, pk):
     filename = f'{backup.device.name}_{backup.created_at:%Y%m%d-%H%M%S}.cfg'
     return HttpResponse(backup.content, content_type='text/plain; charset=utf-8', headers={
         'Content-Disposition': content_disposition_header(as_attachment=True, filename=filename),
+    })
+
+
+@login_required
+def backup_compare(request):
+    form = CompareForm(request.GET)
+    # The list page always sends both ids, so only a hand-edited URL gets here
+    if not form.is_valid():
+        return HttpResponseBadRequest('Choose two existing backups.')
+    a, b = form.cleaned_data['a'], form.cleaned_data['b']
+    return render(request, 'operations/backup_compare.html', {
+        'a': a,
+        'b': b,
+        'diff': unified_diff(a.content, b.content, str(a), str(b)),
     })
 
 # --- end: viewing backups ---
@@ -147,3 +163,55 @@ def deploy_apply(request):
     return render(request, 'operations/_deploy_results.html', {'results': results})
 
 # --- end: deploy ---
+
+
+# ---------------------------------------------------------------------------
+# Rollback
+# ---------------------------------------------------------------------------
+
+ROLLBACK_SALT = 'operations.rollback'
+
+
+@login_required
+def rollback_preview(request, pk):
+    """What a rollback to this backup would send, plus the signed plan for Apply."""
+    backup = get_object_or_404(Backup, pk=pk)
+    try:
+        commands = services.preview_rollback(backup)
+    # Device unreachable: show the error on the page instead of a plan
+    except DeviceError as e:
+        return render(request, 'operations/rollback_preview.html', {
+            'backup': backup,
+            'error': str(e),
+        })
+
+    # Apply sends exactly these commands, or refuses if the device changed since
+    plan = signing.dumps({
+        'backup': backup.pk,
+        'send': commands['send'],
+    }, salt=ROLLBACK_SALT)
+    return render(request, 'operations/rollback_preview.html', {
+        'backup': backup,
+        'commands': commands,
+        'plan': plan,
+    })
+
+
+@login_required
+@require_POST
+def rollback_apply(request):
+    """htmx endpoint: runs the previewed rollback, if the device has not changed since."""
+    try:
+        plan = signing.loads(request.POST.get('plan', ''), salt=ROLLBACK_SALT)
+    # Only a hand-edited request gets here, never the normal page
+    except signing.BadSignature:
+        return HttpResponseBadRequest('Invalid rollback plan.')
+
+    backup = get_object_or_404(Backup, pk=plan['backup'])
+    try:
+        before = services.rollback(backup, plan['send'], request.user)
+    except DeviceError as e:
+        return render(request, 'operations/_rollback_result.html', {'error': str(e)})
+    return render(request, 'operations/_rollback_result.html', {'before': before})
+
+# --- end: rollback ---

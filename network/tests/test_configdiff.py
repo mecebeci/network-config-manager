@@ -1,4 +1,9 @@
-from network.configdiff import config_delete_commands, split_config_commands
+from network.configdiff import (
+    config_delete_commands,
+    needed_set_commands,
+    split_config_commands,
+    unified_diff,
+)
 
 
 def test_split_drops_blank_lines_and_comments():
@@ -112,3 +117,44 @@ def test_withholds_delete_covering_multiline_statement():
     assert config_delete_commands(current, BASE) == (
         [], ['delete / system tls']
     )
+
+
+def test_needed_sets_leave_out_lines_already_on_device():
+    current = 'set / system name host-name spine1\nset / system ntp admin-state enable\n'
+    target = ['set / system name host-name spine1', 'set / system ntp admin-state disable']
+    deletes = ['delete / system ntp admin-state']
+    assert needed_set_commands(current, target, deletes) == [
+        'set / system ntp admin-state disable'
+    ]
+
+
+def test_needed_sets_resend_lines_under_a_wide_delete():
+    current = (
+        'set / network-instance mgmt type ip-vrf\n'
+        'set / network-instance mgmt protocols bgp\n'
+        'set / network-instance mgmt protocols ospf\n'
+    )
+    target = ['set / network-instance mgmt type ip-vrf', 'set / network-instance mgmt protocols bgp']
+    # 'ospf' ends its line, so the delete is made one level up and also removes bgp
+    deletes, _ = config_delete_commands(current, '\n'.join(target))
+    assert deletes == ['delete / network-instance mgmt protocols']
+    assert needed_set_commands(current, target, deletes) == [
+        'set / network-instance mgmt protocols bgp'
+    ]
+
+
+def test_unified_diff_marks_removed_and_added_lines():
+    old = 'set / system name host-name spine1\nset / system ntp admin-state disable\n'
+    new = 'set / system name host-name spine1\nset / system ntp admin-state enable\n'
+    assert unified_diff(old, new, 'old', 'new') == [
+        '--- old',
+        '+++ new',
+        '@@ -1,2 +1,2 @@',
+        ' set / system name host-name spine1',
+        '-set / system ntp admin-state disable',
+        '+set / system ntp admin-state enable',
+    ]
+
+
+def test_unified_diff_of_equal_configs_is_empty():
+    assert unified_diff(BASE, BASE, 'old', 'new') == []

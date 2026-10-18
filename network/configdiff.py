@@ -1,3 +1,4 @@
+import difflib
 import re
 
 # A token is a quoted string, a bracketed leaf-list value, or a bare word
@@ -131,3 +132,39 @@ def config_delete_commands(current_config, target_config):
             deletes.append(command)
 
     return deletes, withheld
+
+
+def needed_set_commands(current_config, target_commands, delete_commands):
+    """The target commands to send after delete_commands, in the same commit.
+
+    A command already on the device is left out, unless one of the deletes
+    removes it as well (a delete can be wider than the line it was made for).
+    """
+    current_commands, _ = split_config_commands(current_config)
+    current = set(current_commands)
+    deleted_paths = [
+        tuple(_CONFIG_TOKEN_RE.findall(command[len('delete / '):]))
+        for command in delete_commands
+    ]
+
+    needed = []
+    for command in target_commands:
+        # Not on the device: a new or changed line, must be sent
+        if command not in current:
+            needed.append(command)
+            continue
+        # On the device, but inside a path that is about to be deleted
+        tokens = _set_path_tokens(command) or ()
+        if any(tokens[:len(path)] == path for path in deleted_paths):
+            needed.append(command)
+    return needed
+
+
+def unified_diff(old_text, new_text, old_label, new_label):
+    """Unified diff of two configs as a list of lines; empty if they are equal."""
+    return list(difflib.unified_diff(
+        old_text.splitlines(), new_text.splitlines(),
+        fromfile=old_label, tofile=new_label,
+        # splitlines() already removed the newlines; don't add them back
+        lineterm='',
+    ))

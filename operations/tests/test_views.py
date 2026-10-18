@@ -1,9 +1,12 @@
+from unittest.mock import patch
+
 import pytest
 from django.core import signing
 from pytest_django.asserts import assertContains, assertNotContains, assertRedirects
 
+from network.ssh import DeviceError
 from operations.models import Backup
-from operations.views import DEPLOY_SALT
+from operations.views import DEPLOY_SALT, ROLLBACK_SALT
 
 # lab_devices, user, ssh and push fixtures come from conftest.py
 
@@ -23,7 +26,9 @@ def backup(lab_devices, user):
     )
 
 
-@pytest.mark.parametrize('url', ['/backup/', '/devices/1/backups/', '/backups/1/'])
+@pytest.mark.parametrize('url', [
+    '/backup/', '/devices/1/backups/', '/backups/1/', '/backups/compare/', '/rollback/1/',
+])
 def test_pages_require_login(client, db, url):
     response = client.get(url)
     assertRedirects(response, f'/login/?next={url}', fetch_redirect_response=False)
@@ -150,3 +155,108 @@ def test_apply_rejects_plan_signed_for_something_else(user_client, lab_devices, 
                          salt='other.purpose')
     assert user_client.post('/deploy/apply/', {'plan': plan}).status_code == 400
     push.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Compare
+# ---------------------------------------------------------------------------
+
+def test_compare_shows_diff(user_client, backup):
+    newer = Backup.objects.create(
+        device=backup.device, content='set / system name host-name spine1-new', reason='manual',
+    )
+    response = user_client.get(f'/backups/compare/?a={backup.pk}&b={newer.pk}')
+    assertContains(response, '<del>-set / system name host-name spine1</del>', html=False)
+    assertContains(response, '<ins>+set / system name host-name spine1-new</ins>', html=False)
+
+
+def test_compare_same_backup_says_identical(user_client, backup):
+    response = user_client.get(f'/backups/compare/?a={backup.pk}&b={backup.pk}')
+    assertContains(response, 'identical')
+
+
+@pytest.mark.parametrize('query', ['a=abc&b=1', 'a=999&b=1', 'a=1'])
+def test_compare_with_bad_ids_is_400(user_client, backup, query):
+    assert user_client.get(f'/backups/compare/?{query}').status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Rollback
+# ---------------------------------------------------------------------------
+
+# The device runs 'backup' plus one extra line, so rolling back only deletes it
+RUNNING = 'set / system name host-name spine1\nset / system ntp admin-state enable\n'
+SEND = ['delete / system ntp']
+
+
+@pytest.fixture
+def running():
+    with patch('operations.services.fetch_config', return_value=RUNNING) as fetch:
+        yield fetch
+
+
+@pytest.fixture
+def push_rollback():
+    with patch('operations.services.push_rollback', return_value=RUNNING) as push:
+        yield push
+
+
+def test_rollback_preview_shows_commands_and_plan(user_client, backup, running):
+    response = user_client.get(f'/rollback/{backup.pk}/')
+    assertContains(response, 'delete / system ntp')
+    assertContains(response, 'Nothing to set')
+    plan = signing.loads(response.context['plan'], salt=ROLLBACK_SALT)
+    assert plan == {'backup': backup.pk, 'send': SEND}
+
+
+def test_rollback_preview_of_matching_device_offers_no_apply(user_client, backup):
+    with patch('operations.services.fetch_config', return_value=backup.content):
+        response = user_client.get(f'/rollback/{backup.pk}/')
+    assertContains(response, 'already matches this backup')
+    assertNotContains(response, 'name="plan"')
+
+
+def test_rollback_preview_unreachable_device_shows_error_without_plan(user_client, backup):
+    with patch('operations.services.fetch_config', side_effect=DeviceError('cannot connect')):
+        response = user_client.get(f'/rollback/{backup.pk}/')
+    assertContains(response, 'cannot connect')
+    assertNotContains(response, 'name="plan"')
+
+
+def test_rollback_apply_rejects_get(user_client, db):
+    assert user_client.get('/rollback/apply/').status_code == 405
+
+
+def test_rollback_apply_runs_the_previewed_plan(user_client, backup, running, push_rollback):
+    plan = user_client.get(f'/rollback/{backup.pk}/').context['plan']
+    response = user_client.post('/rollback/apply/', {'plan': plan})
+
+    assertContains(response, 'Committed')
+    push_rollback.assert_called_once_with(backup, SEND)
+    assert Backup.objects.get(reason='pre-rollback').content == RUNNING
+
+
+def test_rollback_apply_shows_device_error(user_client, backup, running):
+    plan = user_client.get(f'/rollback/{backup.pk}/').context['plan']
+    error = DeviceError('172.21.20.11: config changed since the preview, preview again')
+    with patch('operations.services.push_rollback', side_effect=error):
+        response = user_client.post('/rollback/apply/', {'plan': plan})
+    assertContains(response, 'config changed since the preview')
+    assert not Backup.objects.filter(reason='pre-rollback').exists()
+
+
+def test_rollback_apply_rejects_changed_plan(user_client, backup, running, push_rollback):
+    plan = user_client.get(f'/rollback/{backup.pk}/').context['plan']
+    # Keep the signature, empty the commands in the content
+    signature = plan.rsplit(':', 1)[1]
+    evil = signing.dumps({'backup': backup.pk, 'send': []}, salt=ROLLBACK_SALT)
+    forged = evil.rsplit(':', 1)[0] + ':' + signature
+
+    assert user_client.post('/rollback/apply/', {'plan': forged}).status_code == 400
+    push_rollback.assert_not_called()
+
+
+def test_rollback_apply_rejects_deploy_plan(user_client, backup, push_rollback):
+    plan = signing.dumps({'backup': backup.pk, 'send': SEND}, salt=DEPLOY_SALT)
+    assert user_client.post('/rollback/apply/', {'plan': plan}).status_code == 400
+    push_rollback.assert_not_called()

@@ -8,7 +8,8 @@
 <p>
   {{ backup.get_reason_display }}, by {{ backup.created_by|default:"-" }} ·
   <a href="{% url 'device_backups' backup.device.id %}">All {{ backup.device.name }} backups</a> ·
-  <a href="{% url 'backup_download' backup.id %}">Download</a>
+  <a href="{% url 'backup_download' backup.id %}">Download</a> ·
+  <a href="{% url 'rollback_preview' backup.id %}">Restore</a>
 </p>
 
 <pre>{{ backup.content }}</pre>

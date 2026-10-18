@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Compare backups · {{ block.super }}{% endblock %}
+
+{% block content %}
+<h2>Compare backups</h2>
+
+<p>
+  <del><a href="{% url 'backup_detail' a.id %}">{{ a }}</a></del> ({{ a.get_reason_display }})
+  →
+  <ins><a href="{% url 'backup_detail' b.id %}">{{ b }}</a></ins> ({{ b.get_reason_display }})
+</p>
+
+{% if diff %}
+<pre>{% for line in diff %}{% if line.0 == '+' %}<ins>{{ line }}</ins>{% elif line.0 == '-' %}<del>{{ line }}</del>{% else %}{{ line }}{% endif %}
+{% endfor %}</pre>
+{% else %}
+<p>The two configs are identical.</p>
+{% endif %}
+{% endblock %}

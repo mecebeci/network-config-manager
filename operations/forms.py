@@ -3,6 +3,8 @@ from django import forms
 from devices.models import Device
 from network import rendering
 
+from .models import Backup
+
 # Variable fields get this prefix so a template variable named 'devices'
 # or 'template' cannot clash with the form's own fields
 VAR_PREFIX = 'var_'
@@ -18,6 +20,13 @@ def device_choice_field():
 
 class BackupForm(forms.Form):
     devices = device_choice_field()
+
+
+class CompareForm(forms.Form):
+    """?a=<id>&b=<id>: a is the older side of the diff, b the newer."""
+
+    a = forms.ModelChoiceField(queryset=Backup.objects.all())
+    b = forms.ModelChoiceField(queryset=Backup.objects.all())
 
 
 class DeployForm(forms.Form):

@@ -1,0 +1,5 @@
+{% if error %}
+<p><mark>{{ error }}</mark></p>
+{% else %}
+<p>Committed · <a href="{% url 'backup_detail' before.id %}">config before rollback</a></p>
+{% endif %}
