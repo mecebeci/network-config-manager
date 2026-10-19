@@ -1,0 +1,26 @@
+{% if form.errors %}
+{{ form.devices.errors }}
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Device</th>
+      <th>Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for result in results %}
+    <tr>
+      <td>{{ result.device.name }}</td>
+      <td>
+        {% if result.error %}
+        <mark>{{ result.error }}</mark>
+        {% else %}
+        <a href="{% url 'backup_detail' result.backup.id %}">Saved</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}

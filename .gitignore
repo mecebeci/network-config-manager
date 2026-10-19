@@ -39,15 +39,10 @@ logs/
 # Environment Variables
 .env
 
-# Configuration Backups
-configs/backups/*.cfg
-configs/backups/*.txt
-configs/backups/*.conf
-
-# Reports
-reports/*.png
-reports/*.json
-reports/*.html
+# Django
+data/
+db.sqlite3
+staticfiles/
 
 # OS Files
 .DS_Store
@@ -80,3 +75,7 @@ coverage.xml
 # Unit Test / Pytest
 .pytest_cache/
 .tox/
+
+# Claude Code working files
+CLAUDE.md
+docs/WEB_PLAN.md

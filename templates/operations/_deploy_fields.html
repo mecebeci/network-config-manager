@@ -1,0 +1,8 @@
+{% for field in form.variable_fields %}
+<label>
+  {{ field.label }}
+  {{ field }}
+</label>
+{% empty %}
+<p><small>Choose a template to see its fields.</small></p>
+{% endfor %}

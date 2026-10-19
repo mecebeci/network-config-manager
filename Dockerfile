@@ -1,51 +1,25 @@
-# ============================================
-# Stage 1: Builder - Install dependencies
-# ============================================
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim
 
-WORKDIR /build
-
-# Install dependencies into a virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# ============================================
-# Stage 2: Runtime - Lean production image
-# ============================================
-FROM python:3.11-slim AS runtime
-
-LABEL maintainer="Network Admin"
-LABEL description="Network Configuration Manager for Nokia SR Linux"
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Dependencies first: this layer is cached until requirements.txt changes
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY netconfig.py .
-COPY src/ src/
-COPY inventory/ inventory/
-COPY configs/ configs/
-COPY lab/ lab/
+COPY . .
 
-# Create directories for logs and backups
-RUN mkdir -p logs configs/backups
+# settings.py needs these at import; dummy values, real ones come from .env at runtime
+RUN DJANGO_SECRET_KEY=collectstatic DEVICE_USERNAME=x DEVICE_PASSWORD=x \
+    python manage.py collectstatic --noinput
 
-# Default environment variables
-# NOTE: For production, pass credentials at runtime via --env-file or -e flags
-# These defaults are for the Containerlab lab environment only
-ENV DEVICE_USERNAME=admin
-ENV DEVICE_PASSWORD=NokiaSrl1!
-ENV LOG_LEVEL=INFO
-ENV BACKUP_DIR=configs/backups
-ENV LOGS_DIR=logs
-ENV SSH_TIMEOUT=30
-ENV COMMAND_TIMEOUT=60
+# Same UID as the host user, so files in the ./data bind mount stay writable
+RUN useradd --uid 1000 app && chown app /app/data
+USER app
 
-ENTRYPOINT ["python3", "netconfig.py"]
-CMD ["--help"]
+EXPOSE 8000
+
+# One worker: device locks live in process memory
+CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--access-logfile", "-", "--no-control-socket"]

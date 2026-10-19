@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Deploy · {{ block.super }}{% endblock %}
+
+{% block content %}
+<h2>Deploy</h2>
+
+<form id="deploy-form">
+  <label>
+    Template
+    <select name="template"
+            hx-get="{% url 'deploy_form' %}"
+            hx-target="#fields">
+      {% for value, label in form.fields.template.choices %}
+      <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <div id="fields">
+    {% include "operations/_deploy_fields.html" %}
+  </div>
+
+  <fieldset>
+    <legend>Devices</legend>
+    {{ form.devices }}
+  </fieldset>
+
+  <button type="submit"
+          hx-post="{% url 'deploy_preview' %}"
+          hx-target="#preview">Preview</button>
+</form>
+
+<div id="preview"></div>
+{% endblock %}

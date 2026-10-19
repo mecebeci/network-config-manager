@@ -1,0 +1,26 @@
+{% if error %}
+<p><mark>{{ error }}</mark></p>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Device</th>
+      <th>Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for result in results %}
+    <tr>
+      <td>{{ result.device.name }}</td>
+      <td>
+        {% if result.error %}
+        <mark>{{ result.error }}</mark>
+        {% else %}
+        Committed · <a href="{% url 'backup_detail' result.backup.id %}">config before deploy</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}

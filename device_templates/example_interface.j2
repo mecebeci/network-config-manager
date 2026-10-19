@@ -1,0 +1,10 @@
+# Interface configuration for {{ hostname }}
+{% set subif = subinterface_id | default(0) %}
+
+set / interface {{ interface_name }} admin-state enable
+set / interface {{ interface_name }} description "{{ description | default('Configured by automation') }}"
+set / interface {{ interface_name }} subinterface {{ subif }} admin-state enable
+{% if ip_address is defined %}
+set / interface {{ interface_name }} subinterface {{ subif }} ipv4 admin-state enable
+set / interface {{ interface_name }} subinterface {{ subif }} ipv4 address {{ ip_address }}/{{ netmask | default(24) }}
+{% endif %}

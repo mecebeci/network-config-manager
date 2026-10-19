@@ -1,164 +1,98 @@
 # Architecture
 
-This document shows how the modules fit together and what happens during a deployment. Both diagrams reflect the current code.
-
-## 1. Component diagram
-
-`netconfig.py` is the only entry point. It calls the classes in `src/`, and every operation that touches a device goes through `ConnectionManager`, which uses Netmiko over SSH.
+## Layout
 
 ```mermaid
-flowchart TB
-    user(["Operator"])
-    cli["netconfig.py<br/>CLI: backup, deploy, rollback, list, validate"]
-
-    subgraph app["src/ - application logic"]
-        inv["InventoryLoader"]
-        tpl["TemplateEngine (Jinja2)"]
-        bkp["ConfigBackup"]
-        dep["ConfigDeployment"]
-        rbk["ConfigRollback"]
-        conn["ConnectionManager"]
+flowchart LR
+    Browser -- htmx --> Views
+    subgraph Django
+        Views["operations/views.py<br>devices/views.py"] --> Services["operations/services.py"]
+        Services --> DB[("SQLite<br>Device, Backup")]
     end
-
-    subgraph files["Files and settings"]
-        invf[("inventory/devices.yaml")]
-        tplf[("configs/templates/*.j2")]
-        bkf[("configs/backups/*.cfg")]
-        env[(".env<br/>DEVICE_USERNAME, DEVICE_PASSWORD")]
+    Services --> Network
+    subgraph Network["network/ (plain Python)"]
+        ssh["ssh.py<br>Netmiko session"]
+        configdiff["configdiff.py<br>delete/set computation"]
+        rendering["rendering.py<br>Jinja2 templates"]
     end
-
-    netmiko["Netmiko<br/>nokia_srl driver, SSH"]
-
-    subgraph lab["Containerlab lab: srlinux-mgmt, 172.21.20.0/24"]
-        spine1["spine1<br/>SR Linux"]
-        spine2["spine2<br/>SR Linux"]
-        leaf1["leaf1<br/>SR Linux"]
-        leaf2["leaf2<br/>SR Linux"]
-        spine1 --- leaf1
-        spine1 --- leaf2
-        spine2 --- leaf1
-        spine2 --- leaf2
-    end
-
-    topo[("lab/topology.yaml")]
-
-    user --> cli
-    cli --> bkp
-    cli --> dep
-    cli --> rbk
-    cli --> inv
-    cli --> tpl
-
-    dep --> inv
-    dep --> tpl
-    dep --> bkp
-    dep --> conn
-    rbk --> inv
-    rbk --> bkp
-    rbk --> conn
-    bkp --> inv
-    bkp --> conn
-
-    inv -. reads .-> invf
-    tpl -. reads .-> tplf
-    bkp -. writes .-> bkf
-    rbk -. reads .-> bkf
-    env -. "credentials, resolved in ConfigBackup" .-> bkp
-
-    conn --> netmiko
-    netmiko -- "SSH" --> lab
-    topo -. "containerlab deploy creates" .-> lab
+    ssh -- SSH --> Devices["SR Linux devices"]
 ```
 
-How to read it:
+| Part | Role |
+|---|---|
+| `network/` | Everything SR Linux specific: SSH session, `info flat`, `commit`/`discard`, error detection, config diffing, template rendering. No Django imports, so it is tested without a database. |
+| `operations/services.py` | The operations: backup, deploy, rollback. Uses `network/` and writes `Backup` rows. Views never talk to a device directly. |
+| `operations/views.py` | Forms, signed plans, rendering results. |
+| `devices/` | The `Device` model, edited in the Django admin. |
+| `device_templates/` | Jinja2 config templates, managed in git. |
 
-- **CLI**: `netconfig.py` parses the subcommand, picks target devices, shows the plan, asks for confirmation and prints the results. The work is done by `src/`.
-- **Inventory**: `InventoryLoader` reads `inventory/devices.yaml`. Credentials in that file are `${DEVICE_USERNAME}` / `${DEVICE_PASSWORD}` placeholders. `ConfigBackup` resolves them from the environment (`.env`), and `ConfigDeployment` and `ConfigRollback` reuse that through their `ConfigBackup` instance.
-- **Backup**: `ConfigBackup` runs `info flat` on the device and writes the output to `configs/backups/`.
-- **Deployment**: `ConfigDeployment` renders a template with `TemplateEngine`, takes a backup with `ConfigBackup`, and sends the result through `ConnectionManager`.
-- **Rollback**: `ConfigRollback` reads a backup file, takes a safety backup of the current config, and replays the backup on the device.
-- **Lab**: the devices are created by Containerlab from `lab/topology.yaml`. The tool does not manage the lab itself. It reaches the devices on the `srlinux-mgmt` network, either directly or from the Docker container started by the `netconfig` wrapper script.
-
-## 2. Deploy flow
-
-This is `netconfig.py deploy -t <template> ...`. The first part runs once in the CLI (`handle_deploy`). The second part runs once per device in `ConfigDeployment.deploy_to_device`, either sequentially or in parallel with `--parallel`.
+## Deploy
 
 ```mermaid
-flowchart TD
-    start(["netconfig deploy -t template --vars ..."])
-
-    subgraph cli["CLI: handle_deploy (once)"]
-        loadinv["Load inventory<br/>inventory/devices.yaml"]
-        tplcheck{"Template exists in<br/>configs/templates?"}
-        loadvars["Load --vars<br/>JSON string or @file"]
-        select["Select devices<br/>--device, --role or --all"]
-        plan["Show deployment plan"]
-        dry{"--dry-run?"}
-        preview["Render template for each device<br/>and print the preview"]
-        confirm{"Confirmed?<br/>(--yes skips the prompt)"}
+sequenceDiagram
+    participant U as User
+    participant V as View
+    participant S as Services
+    participant D as Device
+    U->>V: template, devices, variables
+    V->>S: render_configs
+    V-->>U: preview + signed plan
+    U->>V: Apply (plan)
+    V->>V: verify signature
+    V->>S: deploy (renders the plan again)
+    par each device, in a thread
+        S->>S: device lock
+        S->>D: info flat (pre-deploy backup)
+        S->>D: set lines, commit
+        alt error
+            S->>D: discard
+        end
     end
-
-    subgraph dev["Per device: deploy_to_device"]
-        vars["Merge variables<br/>inventory fields + hostname + timestamp + --vars"]
-        render["Render Jinja2 template"]
-        renderok{"Render OK?"}
-        bkpq{"Auto backup enabled?<br/>(--no-backup disables it)"}
-        backup["Backup current config<br/>info flat to configs/backups"]
-        bkpwarn["Backup failed:<br/>log a warning and continue"]
-        connect["Connect with ConnectionManager<br/>credentials from .env, retries"]
-        lines["Drop blank lines and ! comments"]
-        send["send_config in candidate mode<br/>with error_pattern"]
-        rejected{"Command rejected<br/>by the device?"}
-        discard["discard candidate"]
-        commit["commit"]
-        commitok{"Commit OK?"}
-        success(["Success"])
-        hasbackup{"Backup was created?"}
-        rollback["rollback_on_failure<br/>reconnect, replay backup lines, commit"]
-        rbok{"Rollback OK?"}
-    end
-
-    noop(["Exit: nothing sent to devices"])
-    failA(["Failed: no change on device"])
-    failB(["Failed: rolled back to backup"])
-    failC(["Failed: rollback also failed"])
-    failD(["Failed: no backup to roll back to"])
-    cancel(["Cancelled by user"])
-    err(["Exit with error"])
-
-    start --> loadinv --> tplcheck
-    tplcheck -- "No" --> err
-    tplcheck -- "Yes" --> loadvars --> select --> plan --> dry
-    dry -- "Yes" --> preview --> noop
-    dry -- "No" --> confirm
-    confirm -- "No" --> cancel
-    confirm -- "Yes" --> vars
-
-    vars --> render --> renderok
-    renderok -- "No" --> failA
-    renderok -- "Yes" --> bkpq
-    bkpq -- "Yes" --> backup
-    bkpq -- "No" --> connect
-    backup -- "OK" --> connect
-    backup -- "Error" --> bkpwarn --> connect
-
-    connect -- "Connected" --> lines --> send --> rejected
-    connect -- "Connection failed" --> hasbackup
-    rejected -- "Yes" --> discard --> hasbackup
-    rejected -- "No" --> commit --> commitok
-    commitok -- "Yes" --> success
-    commitok -- "No" --> discard
-
-    hasbackup -- "Yes" --> rollback --> rbok
-    hasbackup -- "No" --> failD
-    rbok -- "Yes" --> failB
-    rbok -- "No" --> failC
+    S->>S: save pre-deploy backups (success only)
+    V-->>U: result per device
 ```
 
-Behavior worth knowing:
+## Rollback
 
-- **Dry-run** only renders the templates. It does not connect to any device and does not take a backup.
-- **A failed backup does not stop the deployment.** It is logged as a warning, and the rollback branch is then skipped because no backup exists.
-- **`error_pattern`** matches the device output lines that start with `Parsing error` or `Error:`. A rejected command stops the deployment, and the candidate configuration is discarded before anything is committed.
-- **Rollback replays the backup.** It sends the saved `set /` lines and commits. It does not delete settings that were added after the backup was taken. Multi-line quoted values (login banner, TLS certificate) are skipped with a warning.
-- **A missing template variable renders as an empty string.** The Jinja2 environment is not strict, so for example a missing `ntp_server` produces `server  iburst true`, which the device then rejects.
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as Services
+    participant D as Device
+    U->>S: Restore backup
+    S->>D: info flat (running)
+    S-->>U: deletes + sets, signed plan
+    U->>S: Apply (plan)
+    S->>D: info flat again (under device lock)
+    S->>S: recompute; refuse if it differs from the plan
+    S->>D: deletes + sets, one commit
+    alt error
+        S->>D: discard
+    end
+    S->>S: save pre-rollback backup (success only)
+```
+
+Rollback commands come from comparing the running config with the backup as text:
+
+- A line on the device but not in the backup is deleted at the first path token the backup does not have (`delete / system ntp`). If that token is a known list name, its key is included (`... subinterface 0`).
+- Only the backup lines that are missing on the device, or that fall under one of the deletes, are sent back. Sending all ~600 lines took ~15 s; this takes ~4 s.
+- Multi-line statements (banners, certificates) cannot be sent line by line. They are never deleted and never restored; the preview lists them.
+
+## Decisions
+
+| Decision | Why |
+|---|---|
+| Devices in the database, edited in the Django admin | Login-protected inventory editing for free; no YAML loader. |
+| Device credentials only in `.env` | Secrets stay out of the database and fixtures. |
+| Backup content in the database (`TextField`) | Configs are a few KB. Backups are addressed by id, so there are no file paths to sanitize; a diff is a comparison of two strings. |
+| `network/` free of Django | SR Linux knowledge stays in one place and is easy to unit test with a mocked Netmiko. |
+| Signed plans (`django.core.signing`) between preview and apply | Apply runs exactly what was previewed. The browser cannot change devices, template or variables. |
+| Rollback re-reads the device before applying | If the config changed after the preview, the commands would differ; the apply is refused instead of sending something nobody saw. |
+| Pre-deploy/pre-rollback backup read in the same SSH session, saved only on success | One login per device. A failed change is discarded, so the device is unchanged and there is nothing to restore. |
+| Threads only talk to devices; the main thread writes to the database | SQLite does not like parallel writers, and threads would leave open database connections. |
+| Per-device `threading.Lock`, gunicorn with one worker | The SR Linux candidate is shared by all sessions on a device, so two changes must not overlap. One process keeps the lock simple. |
+| Templates are files in git, not editable in the web UI | Jinja2 without a sandbox would allow server-side template injection. Templates are code and get reviewed like code. |
+| `StrictUndefined` in Jinja2 | A missing variable fails the preview instead of producing a broken config line. |
+| Flat text over SSH (Netmiko), not gNMI | The goal was a CLI/Netmiko tool. gNMI `Set replace` would compute deletes on the device and be atomic, but would change templates, backups and the rollback logic. |
+| htmx with server-rendered HTML | No JavaScript build and no API layer; Django forms and templates do the work. |
+| Only listens on `127.0.0.1`, plain HTTP | A local lab tool. HTTPS settings would break login over HTTP. |

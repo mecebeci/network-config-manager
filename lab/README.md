@@ -288,12 +288,12 @@ ping 172.21.20.11
 
 #### 4. Config Files Not Found
 
-The topology references config files in the `../configs/` directory. If these don't exist yet:
+The topology references config files in the `startup/` directory. If these don't exist yet:
 
 **Temporary fix: Comment out startup-config lines in topology.yaml or create placeholder config files:**
 ```bash
-mkdir -p ../configs
-touch ../configs/{spine1,spine2,leaf1,leaf2}.cfg
+mkdir -p startup
+touch startup/{spine1,spine2,leaf1,leaf2}.cfg
 ```
 
 #### 5. Port Conflicts

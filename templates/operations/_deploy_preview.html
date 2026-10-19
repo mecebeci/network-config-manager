@@ -1,0 +1,24 @@
+{% if form.errors %}
+{{ form.non_field_errors }}
+{{ form.template.errors }}
+{{ form.devices.errors }}
+{% else %}
+{% for device, config in configs %}
+<article>
+  <header><strong>{{ device.name }}</strong> <small>{{ device.ip }}</small></header>
+  <pre>{{ config }}</pre>
+</article>
+{% endfor %}
+
+<form hx-post="{% url 'deploy_apply' %}"
+      hx-target="#results"
+      hx-confirm="Apply this config to the devices above?"
+      hx-indicator="#apply-spinner"
+      hx-disabled-elt="find button">
+  <input type="hidden" name="plan" value="{{ plan }}">
+  <button type="submit">Apply</button>
+  <span id="apply-spinner" class="htmx-indicator" aria-busy="true">Deploying…</span>
+</form>
+
+<div id="results"></div>
+{% endif %}
