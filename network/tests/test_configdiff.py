@@ -72,6 +72,25 @@ def test_extra_list_entry_deleted_by_key():
     )
 
 
+def test_new_list_under_existing_entry_deleted_with_key():
+    # Lab: 'delete / interface ethernet-1/1 subinterface' -> "Missing value for 'index'"
+    current = BASE + (
+        'set / interface ethernet-1/1 subinterface 0 admin-state enable\n'
+        'set / interface ethernet-1/1 subinterface 0 ipv4 address 10.1.1.2/30\n'
+    )
+    assert config_delete_commands(current, BASE) == (
+        ['delete / interface ethernet-1/1 subinterface 0'], []
+    )
+
+
+def test_new_list_with_two_keys_deleted_with_both_keys():
+    current = BASE + 'set / acl acl-filter cpm type ipv4 entry 10 action accept\n'
+    target = BASE + 'set / acl policers system-cpu-policer icmp peak-packet-rate 1000\n'
+    assert config_delete_commands(current, target) == (
+        ['delete / acl acl-filter cpm type ipv4'], []
+    )
+
+
 def test_changed_leaf_value_deletes_leaf():
     current = BASE.replace('to_leaf1', '"changed by deploy"')
     assert config_delete_commands(current, BASE) == (

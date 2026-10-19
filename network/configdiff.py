@@ -4,6 +4,22 @@ import re
 # A token is a quoted string, a bracketed leaf-list value, or a bare word
 _CONFIG_TOKEN_RE = re.compile(r'"(?:[^"\\]|\\.)*"|\[[^\]]*\]|\S+')
 
+# Flat text has no schema, so list names look like containers. A delete cut at
+# a list name must also carry its key(s), or SR Linux rejects it
+# ("Missing value for 'index'"). Known lists only; an unknown one fails safely.
+# Value: tokens the key(s) take after the list name; a second key is written
+# with its name ('acl-filter cpm type ipv4').
+_LIST_KEY_TOKENS = {
+    'interface': 1,
+    'subinterface': 1,
+    'network-instance': 1,
+    'server': 1,
+    'neighbor': 1,
+    'entry': 1,
+    'user': 1,
+    'acl-filter': 3,
+}
+
 
 def split_config_commands(config_text):
     """Split flat config text into single-line commands.
@@ -111,6 +127,9 @@ def config_delete_commands(current_config, target_config):
             continue  # Current line is a prefix of a target line
         # Only the value differs (changed leaf): delete the leaf, not its value
         path = tokens[:diverge] if diverge < len(tokens) else tokens[:-1]
+        # Cut at a list name: take its key(s) too
+        if path:
+            path = tokens[:len(path) + _LIST_KEY_TOKENS.get(path[-1], 0)]
         if path and path not in candidates:
             candidates.append(path)
 

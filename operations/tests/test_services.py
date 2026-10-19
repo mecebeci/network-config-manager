@@ -130,7 +130,7 @@ RUNNING = (
     'set / system ntp server 10.0.0.1\n'
 )
 TARGET = 'set / system name host-name spine1\nset / system ntp admin-state disable\n'
-NTP_DELETES = ['delete / system ntp admin-state', 'delete / system ntp server']
+NTP_DELETES = ['delete / system ntp admin-state', 'delete / system ntp server 10.0.0.1']
 # host-name is already on the device, so only the changed line is set
 SEND = NTP_DELETES + ['set / system ntp admin-state disable']
 
